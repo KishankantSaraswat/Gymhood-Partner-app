@@ -1,14 +1,31 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import api from '../../../utils/api';
 
-const Sidebar = ({ activeSection, onSectionChange }) => {
+const Sidebar = ({ activeSection, onSectionChange, gym }) => {
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+    const [announcementCount, setAnnouncementCount] = useState(0);
+
+    useEffect(() => {
+        const fetchAnnouncements = async () => {
+            try {
+                const data = await api.get('/gymdb/announcements/gym');
+                if (data.success) {
+                    setAnnouncementCount(data.announcements.length);
+                }
+            } catch (err) {
+                console.error('Error fetching announcement count:', err);
+            }
+        };
+
+        fetchAnnouncements();
+    }, []);
 
     const menuItems = [
         { id: 'overview', icon: 'fas fa-home', label: 'Overview' },
         { id: 'profile', icon: 'fas fa-building', label: 'My Gym Profile' },
         { id: 'revenue', icon: 'fas fa-chart-line', label: 'Revenue Analytics' },
         { id: 'plans', icon: 'fas fa-tags', label: 'Membership Plans' },
-        { id: 'announcements', icon: 'fas fa-bullhorn', label: 'Announcements', badge: 2 },
+        { id: 'announcements', icon: 'fas fa-bullhorn', label: 'Announcements', badge: announcementCount },
     ];
 
     const handleMenuClick = (id) => {
@@ -84,9 +101,23 @@ const Sidebar = ({ activeSection, onSectionChange }) => {
                 </div>
 
                 <div className="p-4 border-t border-slate-200">
-                    <button className="w-full flex items-center gap-3 font-medium text-sm text-indigo-600 hover:text-indigo-700 active:scale-95 transition-transform">
+                    <button
+                        onClick={() => onSectionChange('profile')}
+                        className="w-full flex items-center gap-3 font-medium text-sm text-indigo-600 hover:text-indigo-700 active:scale-95 transition-transform mb-2"
+                    >
                         <i className="fas fa-edit"></i>
                         <span>Edit Gym Profile</span>
+                    </button>
+                    <button
+                        onClick={() => {
+                            localStorage.removeItem('gymshood_token');
+                            localStorage.removeItem('token');
+                            window.location.href = '/login';
+                        }}
+                        className="w-full flex items-center gap-3 font-medium text-sm text-red-500 hover:text-red-600 active:scale-95 transition-transform"
+                    >
+                        <i className="fas fa-sign-out-alt"></i>
+                        <span>Logout</span>
                     </button>
                 </div>
             </aside>

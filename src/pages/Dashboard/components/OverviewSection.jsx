@@ -1,16 +1,79 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
+import api from '../../../utils/api';
 
-const OverviewSection = () => {
+const OverviewSection = ({ gym }) => {
     const [showQR, setShowQR] = useState(false);
-    const gymId = "69116cbb50a140e3e70fb54";
+    const [dashboardStats, setDashboardStats] = useState({
+        activeMembers: 0,
+        monthlyRevenue: 0,
+        expiringSoon: 0,
+        totalPlans: 0,
+        nearbyUsers: 0,
+    });
+    const [loading, setLoading] = useState(true);
+
+    const gymId = gym?._id || "N/A";
+
+    useEffect(() => {
+        if (!gym?._id) return;
+
+        const fetchStats = async () => {
+            try {
+                // Fetch stats in parallel
+                const [membersData, revenueData, statsData, plansData] = await Promise.all([
+                    api.get(`/gymdb/dashboard/members/${gym._id}`),
+                    api.get(`/gymdb/dashboard/revenue/${gym._id}`),
+                    api.get(`/gymdb/dashboard/stats/${gym._id}`),
+                    api.get(`/gymdb/plans/gym/${gym._id}`)
+                ]);
+
+                // Extract active members
+                const activeMembers = membersData.success ? membersData.data.planDistribution.totalActiveUsers : 0;
+
+                // Extract monthly revenue (from monthly totals)
+                let monthlyRevenue = 0;
+                if (revenueData.success && revenueData.data.monthly.totals.length > 0) {
+                    monthlyRevenue = revenueData.data.monthly.totals[revenueData.data.monthly.totals.length - 1];
+                }
+
+                // Extract nearby users
+                const nearbyUsers = statsData.success ? statsData.stats.totalNearbyUsers : 0;
+
+                // Extract plans count
+                const totalPlans = plansData.success ? (plansData.plans?.length || 0) : 0;
+
+                setDashboardStats({
+                    activeMembers,
+                    monthlyRevenue,
+                    expiringSoon: 0, // Need endpoint for this or calculate it
+                    totalPlans,
+                    nearbyUsers
+                });
+            } catch (err) {
+                console.error('Error fetching stats:', err);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchStats();
+    }, [gym?._id]);
 
     const stats = [
-        { title: 'Active Members', value: '234', icon: 'fas fa-users-viewfinder', color: 'text-[#4f46e5]', bg: 'bg-[#eef2ff]' },
-        { title: 'This Month Revenue', value: '₹42,000', icon: 'Rs', color: 'text-[#10b981]', bg: 'bg-[#ecfdf5]', isTextIcon: true },
-        { title: 'Expiring Soon', value: '12', icon: 'fas fa-exclamation-circle', color: 'text-[#f59e0b]', bg: 'bg-[#fffbeb]' },
-        { title: 'Total Membership Plans', value: '3', icon: 'fas fa-tag', color: 'text-[#8b5cf6]', bg: 'bg-[#f5f3ff]' },
+        { title: 'Active Members', value: dashboardStats.activeMembers, icon: 'fas fa-users-viewfinder', color: 'text-[#4f46e5]', bg: 'bg-[#eef2ff]' },
+        { title: 'This Month Revenue', value: `₹${dashboardStats.monthlyRevenue.toLocaleString()}`, icon: 'Rs', color: 'text-[#10b981]', bg: 'bg-[#ecfdf5]', isTextIcon: true },
+        { title: 'Expiring Soon', value: dashboardStats.expiringSoon, icon: 'fas fa-exclamation-circle', color: 'text-[#f59e0b]', bg: 'bg-[#fffbeb]' },
+        { title: 'Total Membership Plans', value: dashboardStats.totalPlans, icon: 'fas fa-tag', color: 'text-[#8b5cf6]', bg: 'bg-[#f5f3ff]' },
     ];
+
+    if (loading) {
+        return (
+            <div className="flex items-center justify-center p-20">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
+            </div>
+        );
+    }
 
     return (
         <div className="space-y-8 animate-fade-in">
@@ -51,21 +114,21 @@ const OverviewSection = () => {
                                         <div className="w-10 h-10 sm:w-12 sm:h-12 bg-white/20 rounded-xl flex items-center justify-center backdrop-blur-md">
                                             <i className="fas fa-dumbbell text-lg sm:text-xl"></i>
                                         </div>
-                                        <h3 className="text-xl sm:text-2xl lg:text-3xl font-black tracking-tight">Arabian gym</h3>
+                                        <h3 className="text-xl sm:text-2xl lg:text-3xl font-black tracking-tight">{gym?.name || "Arabian gym"}</h3>
                                     </div>
                                     <span className="px-4 py-1.5 bg-[#bbf7d0] text-[#166534] text-[10px] font-black uppercase tracking-wider rounded-full">
-                                        Verified
+                                        {gym?.isVerified ? "Verified" : "Pending"}
                                     </span>
                                 </div>
 
                                 <div className="space-y-3 sm:space-y-4 lg:space-y-6 mb-4 sm:mb-6 lg:mb-10">
                                     <div className="flex justify-between items-center border-b border-white/10 pb-2 sm:pb-3 lg:pb-4">
                                         <span className="text-emerald-50 text-xs sm:text-sm font-semibold">Total Nearby Users:</span>
-                                        <span className="text-xl sm:text-2xl font-black">0</span>
+                                        <span className="text-xl sm:text-2xl font-black">{dashboardStats.nearbyUsers}</span>
                                     </div>
                                     <div className="flex justify-between items-center border-b border-white/10 pb-2 sm:pb-3 lg:pb-4">
                                         <span className="text-emerald-50 text-xs sm:text-sm font-semibold">Potential Customers:</span>
-                                        <span className="text-xl sm:text-2xl font-black">0</span>
+                                        <span className="text-xl sm:text-2xl font-black">{Math.floor(dashboardStats.nearbyUsers * 0.4)}</span>
                                     </div>
                                 </div>
 
@@ -75,9 +138,9 @@ const OverviewSection = () => {
                                             <i className="fas fa-qrcode text-base sm:text-lg"></i>
                                         </div>
                                         <div>
-                                            <h4 className="font-bold text-white mb-1 text-sm sm:text-base">QR Code Setup Reminder</h4>
+                                            <h4 className="font-bold text-white mb-1 text-sm sm:text-base">QR Code Entry System</h4>
                                             <p className="text-emerald-50/70 text-xs leading-relaxed">
-                                                If you haven't created QR codes yet, please generate them and place them strategically in your gym for member access.
+                                                Use the generated QR code to allow members to check in and out of your gym automatically.
                                             </p>
                                         </div>
                                     </div>
@@ -89,7 +152,7 @@ const OverviewSection = () => {
                                 className="w-full py-3 sm:py-3.5 lg:py-4 bg-[#001d3d] text-white rounded-xl sm:rounded-2xl font-black text-sm sm:text-base flex items-center justify-center gap-2 sm:gap-3 hover:bg-[#003566] transition-all transform active:scale-[0.98] shadow-xl z-10"
                             >
                                 <i className="fas fa-qrcode"></i>
-                                <span>Generate QR Codes</span>
+                                <span>View QR Access Code</span>
                             </button>
 
                             {/* Decorative elements */}
@@ -112,7 +175,7 @@ const OverviewSection = () => {
                                 <i className="fas fa-qrcode text-3xl"></i>
                             </div>
 
-                            <h2 className="text-2xl font-black text-slate-900 mb-1">Arabian Gym</h2>
+                            <h2 className="text-2xl font-black text-slate-900 mb-1">{gym?.name || "Arabian Gym"}</h2>
                             <p className="text-slate-500 text-xs font-bold uppercase tracking-[0.2em] mb-8 text-center">Membership Pass</p>
 
                             <div className="relative mb-8 p-5 bg-white rounded-[2rem] border border-slate-200 shadow-inner">
@@ -134,7 +197,10 @@ const OverviewSection = () => {
                                         <p className="text-[9px] font-bold text-slate-400 uppercase mb-1">Secure ID</p>
                                         <code className="text-xs font-mono font-black text-slate-700">{gymId}</code>
                                     </div>
-                                    <button className="text-indigo-600 w-9 h-9 rounded-xl bg-indigo-50 flex items-center justify-center hover:bg-indigo-100 transition-colors flex-shrink-0">
+                                    <button
+                                        onClick={() => navigator.clipboard.writeText(gymId)}
+                                        className="text-indigo-600 w-9 h-9 rounded-xl bg-indigo-50 flex items-center justify-center hover:bg-indigo-100 transition-colors flex-shrink-0"
+                                    >
                                         <i className="fas fa-copy text-sm"></i>
                                     </button>
                                 </div>

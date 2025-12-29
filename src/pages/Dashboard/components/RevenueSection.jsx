@@ -1,137 +1,322 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Chart, registerables } from 'chart.js';
+import api from '../../../utils/api';
 
 Chart.register(...registerables);
 
-const RevenueSection = () => {
+const RevenueSection = ({ gym }) => {
+    const [loading, setLoading] = useState(true);
+    const [revenueData, setRevenueData] = useState(null);
+    const [memberData, setMemberData] = useState(null);
+    const [transactions, setTransactions] = useState([]);
+    const [expandedMonth, setExpandedMonth] = useState(null);
+
     const revenueChartRef = useRef(null);
     const planChartRef = useRef(null);
     const revenueChartInstance = useRef(null);
     const planChartInstance = useRef(null);
 
-    useEffect(() => {
-        if (revenueChartRef.current) {
-            const ctx = revenueChartRef.current.getContext('2d');
-            if (revenueChartInstance.current) revenueChartInstance.current.destroy();
-            revenueChartInstance.current = new Chart(ctx, {
-                type: 'line',
-                data: {
-                    labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
-                    datasets: [{
-                        label: 'Revenue (₹)',
-                        data: [120000, 150000, 180000, 200000, 220000, 250000, 300000, 320000, 350000, 380000, 400000, 420000],
-                        borderColor: '#4f46e5',
-                        backgroundColor: 'rgba(79, 70, 229, 0.1)',
-                        tension: 0.4,
-                        fill: true
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: { legend: { display: false } },
-                    scales: { y: { beginAtZero: true } }
-                }
-            });
-        }
+    const fetchAnalytics = async () => {
+        if (!gym?._id) return;
+        try {
+            const [revResponse, memResponse, plansResponse] = await Promise.all([
+                api.get(`/gymdb/dashboard/revenue/${gym._id}`),
+                api.get(`/gymdb/dashboard/members/${gym._id}`),
+                api.get('/gymdb/userPlans/gym')
+            ]);
 
-        if (planChartRef.current) {
-            const ctx = planChartRef.current.getContext('2d');
-            if (planChartInstance.current) planChartInstance.current.destroy();
-            planChartInstance.current = new Chart(ctx, {
-                type: 'doughnut',
-                data: {
-                    labels: ['Monthly', 'Quarterly', 'Yearly', 'Daily Pass'],
-                    datasets: [{
-                        data: [45, 25, 20, 10],
-                        backgroundColor: ['#4f46e5', '#8b5cf6', '#ec4899', '#f97316']
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: { legend: { position: 'bottom' } }
-                }
-            });
+            if (revResponse.success) setRevenueData(revResponse.data);
+            if (memResponse.success) setMemberData(memResponse.data);
+            if (plansResponse.success) setTransactions(plansResponse.plans);
+        } catch (err) {
+            console.error('Error fetching analytics:', err);
+        } finally {
+            setLoading(false);
         }
+    };
+
+    useEffect(() => {
+        fetchAnalytics();
+    }, [gym?._id]);
+
+    useEffect(() => {
+        const createCharts = () => {
+            if (loading) return;
+
+            // Revenue Chart
+            if (revenueChartRef.current && revenueData?.monthly) {
+                const ctx = revenueChartRef.current.getContext('2d');
+                if (revenueChartInstance.current) revenueChartInstance.current.destroy();
+
+                const labels = revenueData.monthly.dates || revenueData.monthly.labels || [];
+                const totals = revenueData.monthly.totals || [];
+
+                revenueChartInstance.current = new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels,
+                        datasets: [{
+                            label: 'Revenue (₹)',
+                            data: totals,
+                            backgroundColor: '#3b82f6',
+                            borderRadius: 12,
+                            barThickness: 12,
+                            maxBarThickness: 15,
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { display: false },
+                            tooltip: {
+                                backgroundColor: '#1e293b',
+                                padding: 12,
+                                callbacks: {
+                                    label: (context) => `₹${context.parsed.y?.toLocaleString() || '0'}`
+                                }
+                            }
+                        },
+                        scales: {
+                            y: { beginAtZero: true, grid: { borderDash: [4, 4], color: '#e2e8f0', drawBorder: false }, ticks: { color: '#94a3b8', font: { weight: 'bold' }, callback: (v) => `₹${v}` } },
+                            x: { grid: { display: false }, ticks: { color: '#94a3b8', font: { weight: 'bold' } } }
+                        }
+                    }
+                });
+            }
+
+            // Distribution Chart
+            if (planChartRef.current && memberData?.planDistribution?.byPlan) {
+                const ctx = planChartRef.current.getContext('2d');
+                if (planChartInstance.current) planChartInstance.current.destroy();
+
+                const distribution = memberData.planDistribution.byPlan;
+                const planItems = Object.values(distribution);
+                const labels = planItems.map(p => p.planName || 'Unnamed');
+                const data = planItems.map(p => p.count || 0);
+
+                planChartInstance.current = new Chart(ctx, {
+                    type: 'doughnut',
+                    data: {
+                        labels,
+                        datasets: [{
+                            data,
+                            backgroundColor: ['#3b82f6', '#8b5cf6', '#ec4899', '#f97316', '#10b981']
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { position: 'bottom' },
+                            tooltip: {
+                                callbacks: {
+                                    label: (context) => {
+                                        const value = context.parsed;
+                                        const total = data.reduce((a, b) => a + b, 0);
+                                        const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
+                                        return ` ${value} members (${percentage}%)`;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+        };
+
+        createCharts();
 
         return () => {
             if (revenueChartInstance.current) revenueChartInstance.current.destroy();
             if (planChartInstance.current) planChartInstance.current.destroy();
         };
-    }, []);
+    }, [loading, revenueData, memberData]);
+
+    if (loading) {
+        return (
+            <div className="flex items-center justify-center p-20">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
+            </div>
+        );
+    }
 
     return (
-        <div>
+        <div className="animate-fade-in">
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
-                <div className="lg:col-span-2 bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
-                    <div className="flex items-center justify-between mb-6">
-                        <h3 className="font-bold text-slate-900">Revenue Overview</h3>
-                        <select className="bg-slate-50 border border-slate-200 rounded-lg px-3 py-1 text-sm text-slate-600 outline-none">
+                <div className="lg:col-span-2 bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm">
+                    <div className="flex items-center justify-between mb-8">
+                        <div>
+                            <h3 className="text-xl font-black text-slate-900 tracking-tight">Revenue Overview</h3>
+                            <p className="text-sm text-slate-500 font-medium">Monthly collection trends</p>
+                        </div>
+                        <select className="bg-slate-50 border border-slate-100 rounded-xl px-4 py-2 text-sm font-bold text-slate-600 outline-none appearance-none cursor-pointer">
                             <option>This Year</option>
                             <option>Last Year</option>
                         </select>
                     </div>
-                    <div style={{ height: '300px' }}>
+                    <div style={{ height: '350px' }}>
                         <canvas ref={revenueChartRef}></canvas>
+                    </div>
+
+                    <div className="mt-8 space-y-4">
+                        {(revenueData?.monthly?.dates || revenueData?.monthly?.labels || []).map((label, index) => {
+                            const isExpanded = expandedMonth === label;
+                            const monthlyTransactions = transactions.filter(t => {
+                                const tDate = new Date(t.purchaseDate);
+                                const m = tDate.getMonth() + 1;
+                                const y = tDate.getFullYear();
+                                const formatted = `${y}-${m < 10 ? '0' + m : m}`;
+                                return formatted === label;
+                            });
+
+                            return (
+                                <div key={label} className="overflow-hidden bg-slate-50 border border-slate-100 rounded-[1.5rem] transition-all hover:shadow-lg hover:shadow-slate-100 group">
+                                    <div
+                                        className="flex items-center justify-between p-6 cursor-pointer"
+                                        onClick={() => setExpandedMonth(isExpanded ? null : label)}
+                                    >
+                                        <div className="flex items-center gap-4">
+                                            <div className={`w-10 h-10 rounded-xl bg-white border border-slate-200 flex items-center justify-center transition-colors ${isExpanded ? 'text-blue-500 border-blue-100' : 'text-slate-400 group-hover:text-blue-500 group-hover:border-blue-100'}`}>
+                                                <i className="fas fa-calendar-alt"></i>
+                                            </div>
+                                            <span className="text-lg font-black text-slate-700">{label}</span>
+                                        </div>
+                                        <div className="flex items-center gap-4">
+                                            <span className="text-xl font-black text-emerald-600">₹{revenueData?.monthly?.totals?.[index]?.toLocaleString() || '0'}</span>
+                                            <div className={`w-8 h-8 rounded-lg bg-white border border-slate-200 flex items-center justify-center text-slate-300 transition-transform ${isExpanded ? 'rotate-180 text-blue-500' : ''}`}>
+                                                <i className="fas fa-chevron-down text-xs"></i>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {isExpanded && (
+                                        <div className="px-6 pb-6 animate-slide-down">
+                                            <div className="pt-4 border-t border-slate-100">
+                                                {monthlyTransactions.length === 0 ? (
+                                                    <p className="text-center py-4 text-slate-400 font-bold italic text-sm">No transactions found for this month</p>
+                                                ) : (
+                                                    <div className="space-y-3">
+                                                        {monthlyTransactions.map((t) => (
+                                                            <div key={t._id} className="bg-white p-4 rounded-xl border border-slate-100 flex items-center justify-between group/row hover:border-blue-100 transition-colors">
+                                                                <div className="flex items-center gap-3">
+                                                                    <div className="w-8 h-8 rounded-full bg-slate-50 flex items-center justify-center overflow-hidden border border-slate-100 group-hover/row:border-blue-100">
+                                                                        {t.userId?.profile_picture ? (
+                                                                            <img src={t.userId.profile_picture} alt="" className="w-full h-full object-cover" />
+                                                                        ) : (
+                                                                            <span className="text-[10px] font-black text-slate-400">{t.userId?.name?.[0] || 'U'}</span>
+                                                                        )}
+                                                                    </div>
+                                                                    <div>
+                                                                        <div className="flex items-center gap-2">
+                                                                            <p className="text-sm font-bold text-slate-900">{t.userId?.name || 'Unknown'}</p>
+                                                                            <span className={`px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-wider ${t.isExpired ? 'bg-red-50 text-red-500' : 'bg-emerald-50 text-emerald-500'}`}>
+                                                                                {t.isExpired ? 'Expired' : 'Active'}
+                                                                            </span>
+                                                                        </div>
+                                                                        <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">{t.planId?.name || 'Plan'}</p>
+                                                                    </div>
+                                                                </div>
+                                                                <div className="text-right">
+                                                                    <p className="text-sm font-black text-slate-900">₹{t.planId?.price?.toLocaleString() || '0'}</p>
+                                                                    <p className="text-[10px] text-slate-400 font-medium tabular-nums">{new Date(t.purchaseDate).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}</p>
+                                                                </div>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            );
+                        })}
                     </div>
                 </div>
 
-                <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
-                    <h3 className="font-bold text-slate-900 mb-6">Revenue by Plan</h3>
-                    <div style={{ height: '250px' }}>
+                <div className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm">
+                    <h3 className="text-xl font-black text-slate-900 mb-2 tracking-tight">User Distribution</h3>
+                    <p className="text-sm text-slate-500 font-medium mb-8">By membership level</p>
+                    <div style={{ height: '300px' }}>
                         <canvas ref={planChartRef}></canvas>
+                    </div>
+                    <div className="mt-6 pt-6 border-t border-slate-50 text-center">
+                        <p className="text-2xl font-black text-slate-900">{memberData?.planDistribution?.totalActiveUsers || 0}</p>
+                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Total Active Members</p>
                     </div>
                 </div>
             </div>
 
-            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-                <div className="p-6 border-b border-slate-200">
-                    <h3 className="font-bold text-slate-900">Transaction History</h3>
+            <div className="bg-white rounded-[2.5rem] border border-slate-100 shadow-sm overflow-hidden">
+                <div className="p-8 border-b border-slate-50 flex justify-between items-center">
+                    <h3 className="text-xl font-black text-slate-900 tracking-tight">Recent Activity</h3>
+                    <button className="text-indigo-600 font-black text-xs uppercase tracking-widest hover:underline">View All</button>
                 </div>
                 <div className="overflow-x-auto">
-                    <table className="w-full text-left border-collapse">
+                    <table className="w-full text-left">
                         <thead>
-                            <tr className="bg-slate-50 text-slate-500 text-xs uppercase tracking-wider">
-                                <th className="p-4 font-medium">Transaction ID</th>
-                                <th className="p-4 font-medium">User</th>
-                                <th className="p-4 font-medium">Plan</th>
-                                <th className="p-4 font-medium">Date</th>
-                                <th className="p-4 font-medium">Amount</th>
-                                <th className="p-4 font-medium">Status</th>
+                            <tr className="bg-slate-50/50 text-slate-400 text-[10px] uppercase font-black tracking-widest">
+                                <th className="px-8 py-5">Activity</th>
+                                <th className="px-8 py-5">User</th>
+                                <th className="px-8 py-5">Plan</th>
+                                <th className="px-8 py-5">Purchase Date</th>
+                                <th className="px-8 py-5">Status</th>
+                                <th className="px-8 py-5">Expiry Date</th>
                             </tr>
                         </thead>
-                        <tbody className="text-sm text-slate-700 divide-y divide-slate-100">
-                            <tr>
-                                <td className="p-4 font-mono text-slate-500">#TRX-8901</td>
-                                <td className="p-4 font-medium">Rahul Kumar</td>
-                                <td className="p-4">Gold Plan (3 Months)</td>
-                                <td className="p-4">Dec 01, 2025</td>
-                                <td className="p-4 font-bold">₹4,500</td>
-                                <td className="p-4">
-                                    <span className="bg-green-100 text-green-700 px-2 py-1 rounded text-xs font-bold">Success</span>
-                                </td>
-                            </tr>
-                            <tr>
-                                <td className="p-4 font-mono text-slate-500">#TRX-8902</td>
-                                <td className="p-4 font-medium">Sneha Reddy</td>
-                                <td className="p-4">Monthly Access</td>
-                                <td className="p-4">Nov 30, 2025</td>
-                                <td className="p-4 font-bold">₹1,500</td>
-                                <td className="p-4">
-                                    <span className="bg-green-100 text-green-700 px-2 py-1 rounded text-xs font-bold">Success</span>
-                                </td>
-                            </tr>
-                            <tr>
-                                <td className="p-4 font-mono text-slate-500">#TRX-8903</td>
-                                <td className="p-4 font-medium">Arjun Singh</td>
-                                <td className="p-4">Yearly Membership</td>
-                                <td className="p-4">Nov 28, 2025</td>
-                                <td className="p-4 font-bold">₹12,000</td>
-                                <td className="p-4">
-                                    <span className="bg-yellow-100 text-yellow-700 px-2 py-1 rounded text-xs font-bold">Pending</span>
-                                </td>
-                            </tr>
+                        <tbody className="text-sm text-slate-700 divide-y divide-slate-50">
+                            {transactions.length === 0 ? (
+                                <tr>
+                                    <td colSpan="6" className="px-8 py-20 text-center">
+                                        <div className="flex flex-col items-center">
+                                            <div className="w-12 h-12 bg-slate-50 rounded-full flex items-center justify-center mb-4">
+                                                <i className="fas fa-receipt text-slate-300"></i>
+                                            </div>
+                                            <p className="text-slate-400 font-bold italic">No recent transactions to display</p>
+                                        </div>
+                                    </td>
+                                </tr>
+                            ) : (
+                                transactions.map((plan) => (
+                                    <tr key={plan._id} className="hover:bg-slate-50/50 transition-colors">
+                                        <td className="px-8 py-5">
+                                            <div className="flex items-center gap-3">
+                                                <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-500 flex items-center justify-center">
+                                                    <i className="fas fa-shopping-cart text-xs"></i>
+                                                </div>
+                                                <span className="font-bold text-slate-900">Plan Purchase</span>
+                                            </div>
+                                        </td>
+                                        <td className="px-8 py-5">
+                                            <div className="flex items-center gap-3">
+                                                <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-xs font-black text-slate-500 overflow-hidden">
+                                                    {plan.userId?.profile_picture ? (
+                                                        <img src={plan.userId.profile_picture} alt="" className="w-full h-full object-cover" />
+                                                    ) : (
+                                                        plan.userId?.name?.[0] || 'U'
+                                                    )}
+                                                </div>
+                                                <div>
+                                                    <p className="font-bold text-slate-900">{plan.userId?.name || 'Unknown'}</p>
+                                                    <p className="text-[10px] text-slate-400 font-medium">{plan.userId?.email || 'N/A'}</p>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td className="px-8 py-5 font-bold text-slate-600">{plan.planId?.name || 'Deleted Plan'}</td>
+                                        <td className="px-8 py-5 text-slate-500 tabular-nums">
+                                            {new Date(plan.purchaseDate).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })}
+                                        </td>
+                                        <td className="px-8 py-5">
+                                            <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${plan.isExpired ? 'bg-red-50 text-red-500' : 'bg-emerald-50 text-emerald-500'}`}>
+                                                {plan.isExpired ? 'Expired' : 'Active'}
+                                            </span>
+                                        </td>
+                                        <td className="px-8 py-5 text-slate-500 tabular-nums">
+                                            {plan.maxExpiryDate ? new Date(plan.maxExpiryDate).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' }) : 'N/A'}
+                                        </td>
+                                    </tr>
+                                ))
+                            )}
                         </tbody>
                     </table>
                 </div>

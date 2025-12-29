@@ -5,6 +5,41 @@ import { useNavigate } from 'react-router-dom';
 const LoginPage = () => {
     const navigate = useNavigate();
 
+    const [formData, setFormData] = React.useState({ email: '', password: '' });
+    const [loading, setLoading] = React.useState(false);
+    const [error, setError] = React.useState('');
+
+    const handleLogin = async () => {
+        setLoading(true);
+        setError('');
+        try {
+            const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/auth/login`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    email: formData.email,
+                    password: formData.password,
+                    role: 'GymOwner'
+                })
+            });
+
+            const data = await response.json();
+            if (!data.success) throw new Error(data.message || 'Login failed');
+
+            // Clear old data and store fresh token
+            localStorage.clear();
+            localStorage.setItem('gymshood_token', data.token);
+            localStorage.setItem('user', JSON.stringify(data.user));
+
+            navigate('/dashboard');
+        } catch (err) {
+            console.error('Login error:', err);
+            setError(err.message);
+        } finally {
+            setLoading(false);
+        }
+    };
+
     return (
         <div className="bg-slate-50 min-h-screen flex items-center justify-center relative overflow-hidden py-6 sm:py-8 px-4">
             <div className="absolute top-0 left-0 w-full h-full overflow-hidden -z-10">
@@ -22,12 +57,20 @@ const LoginPage = () => {
                 </div>
 
                 <div className="bg-white/90 backdrop-blur-md rounded-2xl sm:rounded-3xl p-6 sm:p-8 shadow-xl border border-white/50">
+                    {error && <div className="mb-4 p-3 bg-red-50 text-red-600 text-xs rounded-lg font-medium border border-red-100">{error}</div>}
+
                     <div className="space-y-4 sm:space-y-4">
                         <div>
                             <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1">Email Address</label>
                             <div className="relative">
                                 <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4" />
-                                <input type="email" className="w-full pl-9 sm:pl-10 pr-3 py-2.5 sm:py-2.5 text-sm sm:text-sm bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all" placeholder="you@gym.com" />
+                                <input
+                                    type="email"
+                                    className="w-full pl-9 sm:pl-10 pr-3 py-2.5 sm:py-2.5 text-sm sm:text-sm bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
+                                    placeholder="you@gym.com"
+                                    value={formData.email}
+                                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                                />
                             </div>
                         </div>
 
@@ -35,21 +78,31 @@ const LoginPage = () => {
                             <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1">Password</label>
                             <div className="relative">
                                 <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4" />
-                                <input type="password" className="w-full pl-9 sm:pl-10 pr-3 py-2.5 sm:py-2.5 text-sm sm:text-sm bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all" placeholder="••••••••" />
+                                <input
+                                    type="password"
+                                    className="w-full pl-9 sm:pl-10 pr-3 py-2.5 sm:py-2.5 text-sm sm:text-sm bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
+                                    placeholder="••••••••"
+                                    value={formData.password}
+                                    onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                                />
                             </div>
                             <div className="flex justify-end mt-1">
                                 <a href="#" className="text-xs text-indigo-600 hover:text-indigo-700 font-medium">Forgot Password?</a>
                             </div>
                         </div>
 
-                        <button onClick={() => navigate('/dashboard')} className="w-full bg-indigo-600 text-white py-2.5 sm:py-2.5 rounded-lg text-sm sm:text-base font-bold hover:bg-indigo-700 transition-all shadow-lg hover:shadow-xl transform hover:scale-105 active:scale-95 mt-3">
-                            Sign In
+                        <button
+                            onClick={handleLogin}
+                            disabled={loading}
+                            className="w-full bg-indigo-600 text-white py-2.5 sm:py-2.5 rounded-lg text-sm sm:text-base font-bold hover:bg-indigo-700 transition-all shadow-lg hover:shadow-xl transform hover:scale-105 active:scale-95 mt-3 disabled:opacity-70 disabled:cursor-not-allowed"
+                        >
+                            {loading ? 'Signing In...' : 'Sign In'}
                         </button>
                     </div>
 
                     <div className="mt-4 text-center">
                         <p className="text-xs sm:text-sm text-slate-500">
-                            Don't have an account? <button onClick={() => navigate('/signup')} className="text-indigo-600 font-bold hover:underline">Register Gym</button>
+                            Don't have an account? <button onClick={() => navigate('/signup')} className="text-indigo-600 font-bold hover:underline">Register Your Gym</button>
                         </p>
                     </div>
                 </div>
