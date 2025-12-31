@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import api from '../../../utils/api';
 
-const Sidebar = ({ activeSection, onSectionChange, gym }) => {
-    const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+const Sidebar = ({ activeSection, onSectionChange, gym, isOpen, onClose }) => {
     const [announcementCount, setAnnouncementCount] = useState(0);
 
     useEffect(() => {
@@ -26,51 +25,51 @@ const Sidebar = ({ activeSection, onSectionChange, gym }) => {
         { id: 'revenue', icon: 'fas fa-chart-line', label: 'Revenue Analytics' },
         { id: 'plans', icon: 'fas fa-tags', label: 'Membership Plans' },
         { id: 'announcements', icon: 'fas fa-bullhorn', label: 'Announcements', badge: announcementCount },
+        { id: 'payment-history', icon: 'fas fa-history', label: 'Payment History' },
+        { id: 'payment-contact', icon: 'fas fa-id-card', label: 'Payment Contact Info' },
     ];
 
     const handleMenuClick = (id) => {
         onSectionChange(id);
-        setIsMobileMenuOpen(false);
+        onClose(); // Close sidebar on mobile when item clicked
     };
 
     return (
         <>
-            {/* Mobile Menu Button */}
-            <button
-                onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-                className="md:hidden fixed top-4 right-4 z-50 w-11 h-11 bg-white rounded-xl shadow-lg flex items-center justify-center text-slate-700 hover:bg-slate-50 transition-all border border-slate-200"
-            >
-                <i className={`fas ${isMobileMenuOpen ? 'fa-times' : 'fa-bars'} text-lg`}></i>
-            </button>
-
             {/* Mobile Overlay */}
-            {isMobileMenuOpen && (
+            {isOpen && (
                 <div
-                    className="md:hidden fixed inset-0 bg-black/50 backdrop-blur-sm z-40 animate-fade-in"
-                    onClick={() => setIsMobileMenuOpen(false)}
+                    className="md:hidden fixed inset-0 bg-black/50 backdrop-blur-sm z-[60] animate-fade-in"
+                    onClick={onClose}
                 ></div>
             )}
 
             {/* Sidebar */}
             <aside className={`
                 fixed md:relative
-                w-72 bg-white border-r border-slate-100 flex-col z-40 h-screen
+                w-72 bg-white border-r border-slate-100 flex-col z-[70] h-screen
                 transition-transform duration-300 ease-in-out
-                ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
+                ${isOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
                 md:flex
             `}>
-                <div className="h-16 sm:h-20 flex items-center px-4 sm:px-6 border-b border-slate-100">
-                    <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-[#6366f1] flex items-center justify-center text-white mr-3 shadow-indigo-200 shadow-lg">
-                        <i className="fas fa-dumbbell text-base sm:text-lg"></i>
+                <div className="h-16 sm:h-20 flex items-center px-4 sm:px-6 border-b border-slate-100 justify-between">
+                    <div className="flex items-center">
+                        <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-[#6366f1] flex items-center justify-center text-white mr-3 shadow-indigo-200 shadow-lg">
+                            <i className="fas fa-dumbbell text-base sm:text-lg"></i>
+                        </div>
+                        <div className="flex flex-col leading-none pt-1">
+                            <span className="text-lg sm:text-xl font-black text-slate-900 tracking-tight">
+                                Gymshood
+                            </span>
+                            <span className="text-[9px] sm:text-[10px] font-black uppercase tracking-[0.2em] text-[#6366f1] mt-0.5">
+                                Partner
+                            </span>
+                        </div>
                     </div>
-                    <div className="flex flex-col leading-none pt-1">
-                        <span className="text-lg sm:text-xl font-black text-slate-900 tracking-tight">
-                            Gymshood
-                        </span>
-                        <span className="text-[9px] sm:text-[10px] font-black uppercase tracking-[0.2em] text-[#6366f1] mt-0.5">
-                            Partner
-                        </span>
-                    </div>
+                    {/* Close button for mobile */}
+                    <button onClick={onClose} className="md:hidden text-slate-400 hover:text-slate-600">
+                        <i className="fas fa-times text-xl"></i>
+                    </button>
                 </div>
 
                 <div className="flex-1 overflow-y-auto py-4 sm:py-6">
@@ -100,25 +99,33 @@ const Sidebar = ({ activeSection, onSectionChange, gym }) => {
                     </nav>
                 </div>
 
-                <div className="p-4 border-t border-slate-200">
-                    <button
-                        onClick={() => onSectionChange('profile')}
-                        className="w-full flex items-center gap-3 font-medium text-sm text-indigo-600 hover:text-indigo-700 active:scale-95 transition-transform mb-2"
-                    >
-                        <i className="fas fa-edit"></i>
-                        <span>Edit Gym Profile</span>
-                    </button>
-                    <button
-                        onClick={() => {
-                            localStorage.removeItem('gymshood_token');
-                            localStorage.removeItem('token');
-                            window.location.href = '/login';
-                        }}
-                        className="w-full flex items-center gap-3 font-medium text-sm text-red-500 hover:text-red-600 active:scale-95 transition-transform"
-                    >
-                        <i className="fas fa-sign-out-alt"></i>
-                        <span>Logout</span>
-                    </button>
+                <div className="p-4 border-t border-slate-200 bg-slate-50/50">
+                    <div className="space-y-3">
+                        <button
+                            onClick={() => onSectionChange('profile')}
+                            className="w-full flex items-center justify-between px-4 py-3 bg-white border border-slate-200 rounded-xl shadow-sm hover:border-indigo-300 hover:shadow-md hover:shadow-indigo-100 group transition-all duration-200"
+                        >
+                            <div className="flex items-center gap-3">
+                                <div className="w-8 h-8 rounded-lg bg-indigo-50 flex items-center justify-center text-indigo-600 group-hover:bg-indigo-600 group-hover:text-white transition-colors">
+                                    <i className="fas fa-store text-xs"></i>
+                                </div>
+                                <span className="font-bold text-slate-700 text-sm group-hover:text-slate-900">Edit Profile</span>
+                            </div>
+                            <i className="fas fa-chevron-right text-xs text-slate-300 group-hover:text-indigo-400 transform group-hover:translate-x-1 transition-all"></i>
+                        </button>
+
+                        <button
+                            onClick={() => {
+                                localStorage.removeItem('gymshood_token');
+                                localStorage.removeItem('token');
+                                window.location.href = '/login';
+                            }}
+                            className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-red-50 text-red-600 rounded-xl font-bold text-xs uppercase tracking-wider hover:bg-red-100 hover:text-red-700 active:scale-[0.98] transition-all"
+                        >
+                            <i className="fas fa-right-from-bracket"></i>
+                            <span>Sign Out</span>
+                        </button>
+                    </div>
                 </div>
             </aside>
         </>

@@ -513,9 +513,9 @@ const GymProfile = ({ gym }) => {
             </div>
 
             {isEditingShifts && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
                     <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={toggleShiftEdit} />
-                    <div className="bg-white w-full max-w-6xl max-h-[90vh] rounded-[2.5rem] shadow-2xl relative z-10 overflow-hidden flex flex-col animate-modal-in">
+                    <div className="bg-white w-full max-w-5xl max-h-[90vh] rounded-[2.5rem] shadow-2xl relative z-10 overflow-hidden flex flex-col animate-modal-in">
                         <div className="p-8 sm:p-10 border-b border-slate-100 flex justify-between items-center bg-slate-50">
                             <div>
                                 <h3 className="text-2xl font-black text-slate-900 tracking-tight">MANAGE OPERATING SHIFTS</h3>
@@ -534,64 +534,68 @@ const GymProfile = ({ gym }) => {
                                     >
                                         <i className="fas fa-trash"></i>
                                     </button>
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-4">
-                                        <div>
-                                            <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2 block">Day</label>
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-x-4 gap-y-6">
+                                        <div className="lg:col-span-1">
+                                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 block ml-1">Day</label>
                                             <select
                                                 value={shift.day}
                                                 onChange={(e) => handleShiftChange(idx, 'day', e.target.value)}
-                                                className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 font-bold text-slate-700 text-xs focus:ring-2 focus:ring-indigo-500 outline-none"
+                                                className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 font-bold text-slate-700 text-xs focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all shadow-sm"
                                             >
                                                 {['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'].map(d => (
                                                     <option key={d} value={d}>{d}</option>
                                                 ))}
                                             </select>
                                         </div>
-                                        <div>
-                                            <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2 block">Shift Name</label>
+                                        <div className="lg:col-span-1">
+                                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 block ml-1">Shift Name</label>
                                             <input
                                                 type="text"
                                                 value={shift.name}
                                                 placeholder="e.g. Morning"
                                                 onChange={(e) => handleShiftChange(idx, 'name', e.target.value)}
-                                                className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 font-bold text-slate-700 text-xs focus:ring-2 focus:ring-indigo-500 outline-none"
+                                                className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 font-bold text-slate-700 text-xs focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all shadow-sm"
                                             />
                                         </div>
-                                        <div>
-                                            <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2 block">Start Time</label>
-                                            <input
-                                                type="time"
-                                                value={shift.startTime}
-                                                onChange={(e) => handleShiftChange(idx, 'startTime', e.target.value)}
-                                                className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 font-bold text-slate-700 text-xs focus:ring-2 focus:ring-indigo-500 outline-none"
-                                            />
+                                        <div className="lg:col-span-1">
+                                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 block ml-1">Start Time</label>
+                                            <div className="relative">
+                                                <input
+                                                    type="time"
+                                                    value={shift.startTime}
+                                                    onChange={(e) => handleShiftChange(idx, 'startTime', e.target.value)}
+                                                    className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 font-bold text-slate-700 text-xs focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all shadow-sm"
+                                                />
+                                            </div>
                                         </div>
-                                        <div>
-                                            <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2 block">End Time</label>
-                                            <input
-                                                type="time"
-                                                value={shift.endTime}
-                                                onChange={(e) => handleShiftChange(idx, 'endTime', e.target.value)}
-                                                className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 font-bold text-slate-700 text-xs focus:ring-2 focus:ring-indigo-500 outline-none"
-                                            />
+                                        <div className="lg:col-span-1">
+                                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 block ml-1">End Time</label>
+                                            <div className="relative">
+                                                <input
+                                                    type="time"
+                                                    value={shift.endTime}
+                                                    onChange={(e) => handleShiftChange(idx, 'endTime', e.target.value)}
+                                                    className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 font-bold text-slate-700 text-xs focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all shadow-sm"
+                                                />
+                                            </div>
                                         </div>
-                                        <div>
-                                            <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2 block">Capacity</label>
+                                        <div className="lg:col-span-1">
+                                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 block ml-1">Capacity</label>
                                             <input
                                                 type="number"
                                                 min="1"
                                                 value={shift.capacity || ''}
                                                 placeholder="Max Users"
                                                 onChange={(e) => handleShiftChange(idx, 'capacity', e.target.value)}
-                                                className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 font-bold text-slate-700 text-xs focus:ring-2 focus:ring-indigo-500 outline-none"
+                                                className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 font-bold text-slate-700 text-xs focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all shadow-sm"
                                             />
                                         </div>
-                                        <div>
-                                            <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2 block">Gender</label>
+                                        <div className="lg:col-span-1">
+                                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 block ml-1">Gender</label>
                                             <select
                                                 value={shift.gender}
                                                 onChange={(e) => handleShiftChange(idx, 'gender', e.target.value)}
-                                                className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 font-bold text-slate-700 text-xs focus:ring-2 focus:ring-indigo-500 outline-none"
+                                                className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 font-bold text-slate-700 text-xs focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all shadow-sm"
                                             >
                                                 <option value="unisex">Unisex</option>
                                                 <option value="male">Men Only</option>
@@ -629,7 +633,7 @@ const GymProfile = ({ gym }) => {
             )}
 
             {isEditingEquipment && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
                     <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={toggleEquipmentEdit} />
                     <div className="bg-white w-full max-w-2xl max-h-[90vh] rounded-[2.5rem] shadow-2xl relative z-10 overflow-hidden flex flex-col animate-modal-in">
                         <div className="p-8 border-b border-slate-100 flex justify-between items-center bg-slate-50">
@@ -688,7 +692,7 @@ const GymProfile = ({ gym }) => {
             )}
 
             {isEditingPhotos && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
                     <div className="absolute inset-0 bg-slate-900/70 backdrop-blur-md" onClick={() => setIsEditingPhotos(false)} />
                     <div className="bg-white w-full max-w-5xl max-h-[95vh] rounded-[3rem] shadow-2xl relative z-10 overflow-hidden flex flex-col animate-modal-in">
                         <div className="p-8 sm:p-10 border-b border-slate-100 flex justify-between items-center bg-white">

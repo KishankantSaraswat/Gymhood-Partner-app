@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { QRCodeSVG } from 'qrcode.react';
+import { QRCodeCanvas } from 'qrcode.react';
 import api from '../../../utils/api';
+import ActiveMembersModal from './ActiveMembersModal';
 
 const OverviewSection = ({ gym }) => {
     const [showQR, setShowQR] = useState(false);
+    const [showMembersModal, setShowMembersModal] = useState(false);
     const [dashboardStats, setDashboardStats] = useState({
         activeMembers: 0,
         monthlyRevenue: 0,
@@ -89,7 +91,11 @@ const OverviewSection = ({ gym }) => {
             {/* Top Stats Row */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                 {stats.map((stat, i) => (
-                    <div key={i} className="bg-white rounded-2xl p-6 border border-slate-100 flex items-center justify-between shadow-sm hover:shadow-md transition-all group">
+                    <div
+                        key={i}
+                        onClick={() => stat.title === 'Active Members' && setShowMembersModal(true)}
+                        className={`bg-white rounded-2xl p-6 border border-slate-100 flex items-center justify-between shadow-sm hover:shadow-md transition-all group ${stat.title === 'Active Members' ? 'cursor-pointer hover:border-indigo-200' : ''}`}
+                    >
                         <div className="space-y-1">
                             <p className="text-xs font-semibold text-slate-500">{stat.title}</p>
                             <h3 className="text-3xl font-black text-slate-900 tracking-tight">{stat.value}</h3>
@@ -105,152 +111,184 @@ const OverviewSection = ({ gym }) => {
                 ))}
             </div>
 
+            {showMembersModal && (
+                <ActiveMembersModal
+                    gymId={gymId}
+                    onClose={() => setShowMembersModal(false)}
+                />
+            )}
+
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 sm:gap-8">
                 {/* Left Card: Gym Profile with Flip Animation */}
-                <div className="lg:col-span-7 min-h-[450px] sm:min-h-[500px] lg:h-[500px]" style={{ perspective: '1000px' }}>
+                <div className="lg:col-span-7 min-h-[500px] lg:h-[500px]" style={{ perspective: '1200px' }}>
                     <div
-                        className={`relative w-full h-full transition-transform duration-700 ${showQR ? '[transform:rotateY(180deg)]' : ''}`}
+                        className={`relative w-full h-full transition-all duration-700 ease-in-out ${showQR ? '[transform:rotateY(180deg)]' : ''}`}
                         style={{ transformStyle: 'preserve-3d' }}
                     >
                         {/* Front Side */}
                         <div
-                            className="absolute inset-0 bg-[#45b1a8] rounded-2xl sm:rounded-[2.5rem] p-5 sm:p-6 lg:p-8 text-white shadow-lg overflow-hidden flex flex-col justify-between"
+                            className={`absolute inset-0 bg-gradient-to-br from-[#1e293b] to-[#0f172a] rounded-[2.5rem] p-6 lg:p-8 text-white shadow-2xl overflow-hidden flex flex-col justify-between border border-slate-700/50 ${showQR ? 'pointer-events-none' : ''}`}
                             style={{ backfaceVisibility: 'hidden' }}
                         >
-                            <div className="relative z-10">
-                                <div className="flex justify-between items-start mb-4 sm:mb-6 lg:mb-8">
-                                    <div className="flex items-center gap-2 sm:gap-3 lg:gap-4">
-                                        <div className="w-10 h-10 sm:w-12 sm:h-12 bg-white/20 rounded-xl flex items-center justify-center backdrop-blur-md">
-                                            <i className="fas fa-dumbbell text-lg sm:text-xl"></i>
+                            <div className="relative z-10 h-full flex flex-col">
+                                <div className="flex justify-between items-start mb-6">
+                                    <div className="flex items-center gap-4">
+                                        <div className="w-14 h-14 bg-white/10 rounded-2xl flex items-center justify-center backdrop-blur-md border border-white/10 shadow-inner">
+                                            <i className="fas fa-dumbbell text-2xl text-emerald-400"></i>
                                         </div>
-                                        <h3 className="text-xl sm:text-2xl lg:text-3xl font-black tracking-tight">{gym?.name || "Arabian gym"}</h3>
-                                    </div>
-                                    <span className="px-4 py-1.5 bg-[#bbf7d0] text-[#166534] text-[10px] font-black uppercase tracking-wider rounded-full">
-                                        {gym?.isVerified ? "Verified" : "Pending"}
-                                    </span>
-                                </div>
-
-                                <div className="space-y-3 sm:space-y-4 mb-4 sm:mb-6">
-                                    {activeShift?.isOpen ? (
-                                        <>
-                                            <div className="flex justify-between items-center border-b border-white/10 pb-2 sm:pb-3">
-                                                <span className="text-emerald-50 text-xs sm:text-sm font-semibold">Current Shift</span>
-                                                <div className="text-right">
-                                                    <span className="block text-lg sm:text-xl font-black">{activeShift.shiftInfo.name}</span>
-                                                    <span className="text-[10px] font-bold text-emerald-100 uppercase tracking-wider">
-                                                        {activeShift.shiftInfo.startTime} - {activeShift.shiftInfo.endTime}
-                                                    </span>
-                                                </div>
-                                            </div>
-
-                                            <div className="flex justify-between items-center border-b border-white/10 pb-2 sm:pb-3">
-                                                <span className="text-emerald-50 text-xs sm:text-sm font-semibold">Capacity</span>
-                                                <div className="text-right">
-                                                    <span className="block text-lg sm:text-xl font-black">
-                                                        {activeShift.activeCount} <span className="text-sm text-white/50">/ {activeShift.capacity}</span>
-                                                    </span>
-                                                    <div className="w-20 h-1.5 bg-black/20 rounded-full mt-1 ml-auto overflow-hidden">
-                                                        <div
-                                                            className="h-full bg-white rounded-full transition-all duration-500"
-                                                            style={{ width: `${Math.min((activeShift.activeCount / activeShift.capacity) * 100, 100)}%` }}
-                                                        />
-                                                    </div>
-                                                </div>
-                                            </div>
-
-                                            <div className="flex justify-between items-center">
-                                                <span className="text-emerald-50 text-xs sm:text-sm font-semibold">Gender</span>
-                                                <span className="px-3 py-1 bg-white/20 rounded-lg text-[10px] font-black uppercase tracking-wider backdrop-blur-sm">
-                                                    {activeShift.shiftInfo.gender}
+                                        <div>
+                                            <h3 className="text-2xl lg:text-3xl font-black tracking-tight text-white mb-1">{gym?.name || "My Gym"}</h3>
+                                            <div className="flex items-center gap-2">
+                                                <span className={`w-2 h-2 rounded-full ${gym?.isVerified ? "bg-emerald-400 shadow-[0_0_10px_rgba(52,211,153,0.5)]" : "bg-amber-400"}`}></span>
+                                                <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">
+                                                    {gym?.isVerified ? "Verified Partner" : "Verification Pending"}
                                                 </span>
                                             </div>
-                                        </>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="flex-1 space-y-4">
+                                    {activeShift?.isOpen ? (
+                                        <div className="bg-white/5 rounded-3xl p-6 border border-white/5 backdrop-blur-sm">
+                                            <div className="flex justify-between items-center mb-6">
+                                                <div>
+                                                    <p className="text-slate-400 text-xs font-bold uppercase tracking-wider mb-1">Current Session</p>
+                                                    <h4 className="text-xl font-black text-white">{activeShift.shiftInfo.name}</h4>
+                                                </div>
+                                                <div className="text-right">
+                                                    <div className="px-3 py-1 bg-emerald-500/20 text-emerald-300 rounded-lg text-xs font-black uppercase tracking-wider mb-1 inline-block">
+                                                        Active
+                                                    </div>
+                                                    <p className="text-white font-mono text-sm">{activeShift.shiftInfo.startTime} - {activeShift.shiftInfo.endTime}</p>
+                                                </div>
+                                            </div>
+
+                                            <div className="space-y-2">
+                                                <div className="flex justify-between text-sm">
+                                                    <span className="text-slate-300">Capacity Status</span>
+                                                    <span className="font-bold text-white">{activeShift.activeCount} <span className="text-slate-500">/ {activeShift.capacity}</span></span>
+                                                </div>
+                                                <div className="h-3 bg-slate-700/50 rounded-full overflow-hidden">
+                                                    <div
+                                                        className="h-full bg-emerald-500 rounded-full shadow-[0_0_10px_rgba(16,185,129,0.5)] transition-all duration-700 ease-out"
+                                                        style={{ width: `${Math.min((activeShift.activeCount / activeShift.capacity) * 100, 100)}%` }}
+                                                    />
+                                                </div>
+                                            </div>
+                                        </div>
                                     ) : (
-                                        <div className="py-6 text-center opacity-80">
-                                            <i className="fas fa-moon text-3xl mb-2 block"></i>
-                                            <span className="text-lg font-black">Gym Currently Closed</span>
-                                            <p className="text-xs mt-1">No active shift running right now.</p>
+                                        <div className="h-full flex flex-col items-center justify-center text-center p-8 bg-white/5 rounded-3xl border border-white/5">
+                                            <div className="w-16 h-16 bg-slate-800/50 rounded-full flex items-center justify-center mb-4">
+                                                <i className="fas fa-moon text-2xl text-indigo-400"></i>
+                                            </div>
+                                            <h4 className="text-xl font-black text-white mb-2">Gym Closed</h4>
+                                            <p className="text-slate-400 text-sm max-w-[200px]">No active shifts at the moment. Check back later.</p>
                                         </div>
                                     )}
                                 </div>
 
-                                <div className="bg-white/10 backdrop-blur-md rounded-2xl p-4 border border-white/10 mb-4 sm:mb-6">
-                                    <div className="flex gap-3 items-start">
-                                        <div className="w-8 h-8 sm:w-9 sm:h-9 bg-white/20 rounded-xl flex items-center justify-center flex-shrink-0">
-                                            <i className="fas fa-qrcode text-sm sm:text-base"></i>
-                                        </div>
-                                        <div>
-                                            <h4 className="font-bold text-white mb-0.5 text-xs sm:text-sm">QR Code Entry System</h4>
-                                            <p className="text-emerald-50/70 text-[10px] leading-relaxed">
-                                                Scan to check-in/out.
-                                            </p>
-                                        </div>
-                                    </div>
-                                </div>
+                                <button
+                                    onClick={() => setShowQR(true)}
+                                    className="mt-6 w-full py-4 bg-gradient-to-r from-indigo-600 to-violet-600 text-white rounded-2xl font-black text-sm uppercase tracking-widest shadow-lg shadow-indigo-500/30 hover:shadow-indigo-500/50 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-3 group"
+                                >
+                                    <i className="fas fa-qrcode text-lg group-hover:rotate-12 transition-transform"></i>
+                                    <span>Show QR Access Code</span>
+                                </button>
                             </div>
 
-                            <button
-                                onClick={() => setShowQR(true)}
-                                className="w-full py-3 sm:py-3.5 lg:py-4 bg-[#001d3d] text-white rounded-xl sm:rounded-2xl font-black text-sm sm:text-base flex items-center justify-center gap-2 sm:gap-3 hover:bg-[#003566] transition-all transform active:scale-[0.98] shadow-xl z-10"
-                            >
-                                <i className="fas fa-qrcode"></i>
-                                <span>View QR Access Code</span>
-                            </button>
-
-                            {/* Decorative elements */}
-                            <div className="absolute top-[-10%] right-[-10%] w-64 h-64 bg-white/5 rounded-full blur-3xl"></div>
+                            {/* Decorative Background */}
+                            <div className="absolute top-0 right-0 w-[300px] h-[300px] bg-indigo-500/20 rounded-full blur-[100px] -translate-y-1/2 translate-x-1/3 pointer-events-none"></div>
+                            <div className="absolute bottom-0 left-0 w-[200px] h-[200px] bg-emerald-500/10 rounded-full blur-[80px] translate-y-1/3 -translate-x-1/4 pointer-events-none"></div>
                         </div>
 
                         {/* Back Side - QR Code */}
                         <div
-                            className="absolute inset-0 bg-slate-50 rounded-2xl sm:rounded-[2.5rem] p-5 sm:p-6 lg:p-8 shadow-lg flex flex-col items-center justify-center overflow-y-auto"
+                            className={`absolute inset-0 bg-white rounded-[2.5rem] p-6 lg:p-8 shadow-2xl flex flex-col items-center border border-slate-100 ${!showQR ? 'pointer-events-none' : ''}`}
                             style={{ backfaceVisibility: 'hidden', transform: 'rotateY(180deg)' }}
                         >
                             <button
                                 onClick={() => setShowQR(false)}
-                                className="absolute top-6 right-6 w-10 h-10 rounded-full bg-white flex items-center justify-center text-slate-400 hover:text-slate-900 shadow-sm transition-all border border-slate-100"
+                                className="absolute top-6 right-6 w-12 h-12 rounded-full bg-slate-50 flex items-center justify-center text-slate-400 hover:text-slate-900 hover:bg-slate-100 transition-all z-20"
                             >
-                                <i className="fas fa-times"></i>
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                                </svg>
                             </button>
 
-                            <div className="w-20 h-20 bg-indigo-600 text-white rounded-[2rem] flex items-center justify-center shadow-2xl shadow-indigo-200 mb-6 border-4 border-white">
-                                <i className="fas fa-qrcode text-3xl"></i>
-                            </div>
-
-                            <h2 className="text-2xl font-black text-slate-900 mb-1">{gym?.name || "Arabian Gym"}</h2>
-                            <p className="text-slate-500 text-xs font-bold uppercase tracking-[0.2em] mb-8 text-center">Membership Pass</p>
-
-                            <div className="relative mb-8 p-5 bg-white rounded-[2rem] border border-slate-200 shadow-inner">
-                                <div className="absolute top-0 left-0 w-full h-1 bg-indigo-500 shadow-[0_0_15px_rgba(79,70,229,0.5)] animate-scan z-10 opacity-50"></div>
-                                <div className="relative p-2 bg-white rounded-xl">
-                                    <QRCodeSVG
-                                        value={gymId}
-                                        size={180}
-                                        level="H"
-                                        includeMargin={false}
-                                        className="mx-auto"
-                                    />
-                                </div>
-                            </div>
-
-                            <div className="w-full max-w-md space-y-3">
-                                <div className="flex items-center justify-between p-4 bg-white rounded-2xl border border-slate-200 shadow-sm">
-                                    <div className="truncate pr-3">
-                                        <p className="text-[9px] font-bold text-slate-400 uppercase mb-1">Secure ID</p>
-                                        <code className="text-xs font-mono font-black text-slate-700">{gymId}</code>
+                            <div className="w-full h-full flex flex-col items-center justify-center pt-8">
+                                <div className="text-center mb-8">
+                                    <div className="inline-block p-1 bg-indigo-50 rounded-xl mb-3">
+                                        <div className="px-3 py-1 bg-white rounded-lg shadow-sm">
+                                            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-indigo-600">Secure Access Pass</span>
+                                        </div>
                                     </div>
-                                    <button
-                                        onClick={() => navigator.clipboard.writeText(gymId)}
-                                        className="text-indigo-600 w-9 h-9 rounded-xl bg-indigo-50 flex items-center justify-center hover:bg-indigo-100 transition-colors flex-shrink-0"
-                                    >
-                                        <i className="fas fa-copy text-sm"></i>
-                                    </button>
+                                    <h2 className="text-3xl font-black text-slate-900 tracking-tight">{gym?.name || "Gym Name"}</h2>
                                 </div>
-                                <div className="grid grid-cols-2 gap-3">
-                                    <button className="py-4 bg-slate-900 text-white rounded-[1.5rem] font-bold text-xs tracking-wider shadow-xl hover:bg-black transition-all flex items-center justify-center gap-2">
+
+                                <div className="relative mb-8 group">
+                                    <div className="absolute -inset-1 bg-gradient-to-r from-indigo-500 to-purple-500 rounded-[2.5rem] blur opacity-25 group-hover:opacity-50 transition duration-1000 group-hover:duration-200"></div>
+                                    <div className="relative p-8 bg-white rounded-[2rem] shadow-xl border border-slate-100">
+                                        <div className="absolute top-0 left-0 w-full h-1 bg-indigo-500 shadow-[0_0_20px_rgba(79,70,229,0.5)] animate-scan z-10 opacity-50 rounded-t-[2rem]"></div>
+                                        <QRCodeCanvas
+                                            id="gym-qr-code"
+                                            value={gymId}
+                                            size={200}
+                                            level="H"
+                                            includeMargin={true}
+                                            className="mx-auto"
+                                        />
+                                        <div className="absolute bottom-4 left-0 w-full text-center">
+                                            <p className="text-[10px] font-mono text-slate-400">SCAN TO CHECK-IN</p>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="w-full max-w-sm grid grid-cols-2 gap-4">
+                                    <button
+                                        onClick={() => {
+                                            const canvas = document.getElementById('gym-qr-code');
+                                            if (canvas) {
+                                                const url = canvas.toDataURL('image/png');
+                                                const link = document.createElement('a');
+                                                link.download = `${gym?.name || 'gym'}-qrcode.png`;
+                                                link.href = url;
+                                                link.click();
+                                            }
+                                        }}
+                                        className="py-4 bg-slate-900 text-white rounded-[1.5rem] font-bold text-xs tracking-wider shadow-xl hover:bg-black transition-all flex items-center justify-center gap-2"
+                                    >
                                         <i className="fas fa-download"></i> SAVE
                                     </button>
-                                    <button className="py-4 bg-[#2d6a4f] text-white rounded-[1.5rem] font-bold text-xs tracking-wider shadow-xl hover:bg-[#1b4332] transition-all flex items-center justify-center gap-2">
+                                    <button
+                                        onClick={async () => {
+                                            const canvas = document.getElementById('gym-qr-code');
+                                            if (canvas && navigator.share) {
+                                                try {
+                                                    const blob = await new Promise(resolve => canvas.toBlob(resolve));
+                                                    const file = new File([blob], 'qrcode.png', { type: 'image/png' });
+                                                    await navigator.share({
+                                                        title: gym?.name || 'Gym QR Code',
+                                                        text: 'Check out my gym QR code!',
+                                                        files: [file]
+                                                    });
+                                                } catch (err) {
+                                                    console.error('Error sharing:', err);
+                                                }
+                                            } else {
+                                                // Fallback for browsers that don't support share
+                                                const canvas = document.getElementById('gym-qr-code');
+                                                if (canvas) {
+                                                    const url = canvas.toDataURL('image/png');
+                                                    const link = document.createElement('a');
+                                                    link.download = `${gym?.name || 'gym'}-qrcode.png`;
+                                                    link.href = url;
+                                                    link.click();
+                                                }
+                                            }
+                                        }}
+                                        className="py-4 bg-[#2d6a4f] text-white rounded-[1.5rem] font-bold text-xs tracking-wider shadow-xl hover:bg-[#1b4332] transition-all flex items-center justify-center gap-2"
+                                    >
                                         <i className="fas fa-share-nodes"></i> SHARE
                                     </button>
                                 </div>

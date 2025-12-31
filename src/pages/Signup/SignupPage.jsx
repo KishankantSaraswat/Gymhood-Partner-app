@@ -21,8 +21,10 @@ const SignupPage = () => {
         email: '',
         phone: '',
         password: '',
+
         alternatePhone: '',
         address: '',
+        about: '',
         gymSlogan: '',
         capacity: '',
         openTime: '06:00',
@@ -30,7 +32,8 @@ const SignupPage = () => {
         gymType: 'unisex',
         facilities: [],
         photos: {},
-        documents: {}
+        documents: {},
+        coordinates: [] // [longitude, latitude]
     });
     const totalSteps = 5;
     const navigate = useNavigate();
@@ -120,6 +123,7 @@ const SignupPage = () => {
             const gymRegResponse = await fetch(`${API_BASE}/gym/register`, fetchOptions({
                 name: formData.name,
                 location: formData.address,
+                about: formData.about,
                 gymSlogan: formData.gymSlogan,
                 capacity: parseInt(formData.capacity),
                 openTime: formData.openTime,
@@ -129,6 +133,7 @@ const SignupPage = () => {
                 alternatePhone: formData.alternatePhone,
                 gymType: formData.gymType,
                 facilities: formData.facilities,
+                coordinates: formData.coordinates,
                 onboardingStep: 3
             }));
 
