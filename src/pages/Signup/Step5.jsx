@@ -1,21 +1,35 @@
 import React, { useState } from 'react';
 import { Upload, Shield, FileText, Check } from 'lucide-react';
 
+import api from '../../utils/api';
+
+
 const Step5 = ({ data, updateData }) => {
     const [uploading, setUploading] = useState({});
 
-    const handleFileChange = (id, file) => {
+    const handleFileChange = async (id, file) => {
         if (!file) return;
+
+        // Enforce PDF only
+        if (file.type !== 'application/pdf') {
+            alert('Only PDF files are allowed for verification documents.');
+            return;
+        }
 
         setUploading(prev => ({ ...prev, [id]: true }));
 
-        // Simulate upload
-        setTimeout(() => {
-            const dummyUrl = `https://mock-storage.com/${id}-${Date.now()}.pdf`;
-            updateData({ documents: { ...data.documents, [id]: dummyUrl } });
+        try {
+            const res = await api.upload(file);
+            if (res.success) {
+                updateData({ documents: { ...data.documents, [id]: res.url } });
+                console.log(`✅ Uploaded Doc ${id}:`, res.url);
+            }
+        } catch (error) {
+            console.error(`Upload failed for ${id}:`, error);
+            alert('Failed to upload document. Please try again.');
+        } finally {
             setUploading(prev => ({ ...prev, [id]: false }));
-            console.log(`✅ Uploaded Doc ${id}:`, dummyUrl);
-        }, 1500);
+        }
     };
 
     const docFields = [
@@ -53,7 +67,7 @@ const Step5 = ({ data, updateData }) => {
                                     </div>
                                     <label className="cursor-pointer text-indigo-600 hover:text-indigo-700 font-bold text-sm">
                                         Change
-                                        <input type="file" className="hidden" accept=".pdf,.doc,.docx,image/*" onChange={(e) => handleFileChange(field.id, e.target.files[0])} />
+                                        <input type="file" className="hidden" accept=".pdf" onChange={(e) => handleFileChange(field.id, e.target.files[0])} />
                                     </label>
                                 </div>
                             ) : (
@@ -70,7 +84,7 @@ const Step5 = ({ data, updateData }) => {
                                             <Upload className="w-4 h-4" /> Upload Doc
                                         </>
                                     )}
-                                    <input type="file" className="hidden" accept=".pdf,.doc,.docx,image/*" disabled={uploading[field.id]} onChange={(e) => handleFileChange(field.id, e.target.files[0])} />
+                                    <input type="file" className="hidden" accept=".pdf" disabled={uploading[field.id]} onChange={(e) => handleFileChange(field.id, e.target.files[0])} />
                                 </label>
                             )}
                         </div>

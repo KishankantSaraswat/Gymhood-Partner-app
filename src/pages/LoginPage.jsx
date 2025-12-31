@@ -12,6 +12,41 @@ const LoginPage = () => {
     const handleLogin = async () => {
         setLoading(true);
         setError('');
+
+        // Special Admin Login Check
+        if (formData.email === 'kk@gmail.com' && formData.password === '123456') {
+            // You might want to get a real token from backend for admin if possible, 
+            // but for now we redirect. 
+            // Ideally the backend login should return role='Admin' and we redirect based on that.
+            // But if we want to force this specific creds for this dashboard:
+
+            try {
+                const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/auth/login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        email: formData.email,
+                        password: formData.password,
+                        role: 'Admin' // Try login as Admin
+                    })
+                });
+                const data = await response.json();
+
+                if (data.success) {
+                    localStorage.setItem('gymshood_token', data.token);
+                    localStorage.setItem('user', JSON.stringify(data.user));
+                    localStorage.setItem('role', 'Admin');
+                    navigate('/admin-dashboard');
+                    setLoading(false);
+                    return;
+                }
+            } catch (e) {
+                //fallback or continue to normal flow if api fails? 
+                // If specific hardcoded creds are desired regardless of backend:
+                console.log("Admin API login failed, force redirecting for demo if needed. But better to rely on API.");
+            }
+        }
+
         try {
             const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/auth/login`, {
                 method: 'POST',

@@ -13,6 +13,9 @@ const OverviewSection = ({ gym }) => {
     });
     const [loading, setLoading] = useState(true);
 
+    const [activeShift, setActiveShift] = useState(null);
+    const [checkinLogs, setCheckinLogs] = useState([]);
+
     const gymId = gym?._id || "N/A";
 
     useEffect(() => {
@@ -21,11 +24,13 @@ const OverviewSection = ({ gym }) => {
         const fetchStats = async () => {
             try {
                 // Fetch stats in parallel
-                const [membersData, revenueData, statsData, plansData] = await Promise.all([
+                const [membersData, revenueData, statsData, plansData, shiftData, logsData] = await Promise.all([
                     api.get(`/gymdb/dashboard/members/${gym._id}`),
                     api.get(`/gymdb/dashboard/revenue/${gym._id}`),
                     api.get(`/gymdb/dashboard/stats/${gym._id}`),
-                    api.get(`/gymdb/plans/gym/${gym._id}`)
+                    api.get(`/gymdb/plans/gym/${gym._id}`),
+                    api.get(`/gymdb/gym/${gym._id}/active-capacity`),
+                    api.get(`/gymdb/gym/${gym._id}/today-register`)
                 ]);
 
                 // Extract active members
@@ -46,10 +51,14 @@ const OverviewSection = ({ gym }) => {
                 setDashboardStats({
                     activeMembers,
                     monthlyRevenue,
-                    expiringSoon: 0, // Need endpoint for this or calculate it
+                    expiringSoon: 0,
                     totalPlans,
                     nearbyUsers
                 });
+
+                if (shiftData.success) setActiveShift(shiftData);
+                if (logsData.success) setCheckinLogs(logsData.register || []);
+
             } catch (err) {
                 console.error('Error fetching stats:', err);
             } finally {
@@ -121,26 +130,59 @@ const OverviewSection = ({ gym }) => {
                                     </span>
                                 </div>
 
-                                <div className="space-y-3 sm:space-y-4 lg:space-y-6 mb-4 sm:mb-6 lg:mb-10">
-                                    <div className="flex justify-between items-center border-b border-white/10 pb-2 sm:pb-3 lg:pb-4">
-                                        <span className="text-emerald-50 text-xs sm:text-sm font-semibold">Total Nearby Users:</span>
-                                        <span className="text-xl sm:text-2xl font-black">{dashboardStats.nearbyUsers}</span>
-                                    </div>
-                                    <div className="flex justify-between items-center border-b border-white/10 pb-2 sm:pb-3 lg:pb-4">
-                                        <span className="text-emerald-50 text-xs sm:text-sm font-semibold">Potential Customers:</span>
-                                        <span className="text-xl sm:text-2xl font-black">{Math.floor(dashboardStats.nearbyUsers * 0.4)}</span>
-                                    </div>
+                                <div className="space-y-3 sm:space-y-4 mb-4 sm:mb-6">
+                                    {activeShift?.isOpen ? (
+                                        <>
+                                            <div className="flex justify-between items-center border-b border-white/10 pb-2 sm:pb-3">
+                                                <span className="text-emerald-50 text-xs sm:text-sm font-semibold">Current Shift</span>
+                                                <div className="text-right">
+                                                    <span className="block text-lg sm:text-xl font-black">{activeShift.shiftInfo.name}</span>
+                                                    <span className="text-[10px] font-bold text-emerald-100 uppercase tracking-wider">
+                                                        {activeShift.shiftInfo.startTime} - {activeShift.shiftInfo.endTime}
+                                                    </span>
+                                                </div>
+                                            </div>
+
+                                            <div className="flex justify-between items-center border-b border-white/10 pb-2 sm:pb-3">
+                                                <span className="text-emerald-50 text-xs sm:text-sm font-semibold">Capacity</span>
+                                                <div className="text-right">
+                                                    <span className="block text-lg sm:text-xl font-black">
+                                                        {activeShift.activeCount} <span className="text-sm text-white/50">/ {activeShift.capacity}</span>
+                                                    </span>
+                                                    <div className="w-20 h-1.5 bg-black/20 rounded-full mt-1 ml-auto overflow-hidden">
+                                                        <div
+                                                            className="h-full bg-white rounded-full transition-all duration-500"
+                                                            style={{ width: `${Math.min((activeShift.activeCount / activeShift.capacity) * 100, 100)}%` }}
+                                                        />
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <div className="flex justify-between items-center">
+                                                <span className="text-emerald-50 text-xs sm:text-sm font-semibold">Gender</span>
+                                                <span className="px-3 py-1 bg-white/20 rounded-lg text-[10px] font-black uppercase tracking-wider backdrop-blur-sm">
+                                                    {activeShift.shiftInfo.gender}
+                                                </span>
+                                            </div>
+                                        </>
+                                    ) : (
+                                        <div className="py-6 text-center opacity-80">
+                                            <i className="fas fa-moon text-3xl mb-2 block"></i>
+                                            <span className="text-lg font-black">Gym Currently Closed</span>
+                                            <p className="text-xs mt-1">No active shift running right now.</p>
+                                        </div>
+                                    )}
                                 </div>
 
-                                <div className="bg-white/10 backdrop-blur-md rounded-2xl sm:rounded-3xl p-4 sm:p-5 lg:p-6 border border-white/10 mb-4 sm:mb-6 lg:mb-8">
-                                    <div className="flex gap-3 sm:gap-4 items-start">
-                                        <div className="w-9 h-9 sm:w-10 sm:h-10 bg-white/20 rounded-xl flex items-center justify-center flex-shrink-0">
-                                            <i className="fas fa-qrcode text-base sm:text-lg"></i>
+                                <div className="bg-white/10 backdrop-blur-md rounded-2xl p-4 border border-white/10 mb-4 sm:mb-6">
+                                    <div className="flex gap-3 items-start">
+                                        <div className="w-8 h-8 sm:w-9 sm:h-9 bg-white/20 rounded-xl flex items-center justify-center flex-shrink-0">
+                                            <i className="fas fa-qrcode text-sm sm:text-base"></i>
                                         </div>
                                         <div>
-                                            <h4 className="font-bold text-white mb-1 text-sm sm:text-base">QR Code Entry System</h4>
-                                            <p className="text-emerald-50/70 text-xs leading-relaxed">
-                                                Use the generated QR code to allow members to check in and out of your gym automatically.
+                                            <h4 className="font-bold text-white mb-0.5 text-xs sm:text-sm">QR Code Entry System</h4>
+                                            <p className="text-emerald-50/70 text-[10px] leading-relaxed">
+                                                Scan to check-in/out.
                                             </p>
                                         </div>
                                     </div>
@@ -217,23 +259,44 @@ const OverviewSection = ({ gym }) => {
                     </div>
                 </div>
 
-                {/* Right Card: Quick Actions */}
-                <div className="lg:col-span-5 bg-white rounded-2xl sm:rounded-[2.5rem] p-6 sm:p-8 lg:p-10 border border-slate-100 shadow-sm flex flex-col">
-                    <h3 className="text-lg sm:text-xl font-black text-slate-900 mb-6 sm:mb-8">Quick Actions</h3>
+                {/* Right Card: Live Check-ins */}
+                <div className="lg:col-span-5 bg-white rounded-2xl sm:rounded-[2.5rem] p-6 sm:p-8 lg:p-10 border border-slate-100 shadow-sm flex flex-col h-[500px]">
+                    <div className="flex justify-between items-center mb-6 sm:mb-8">
+                        <h3 className="text-lg sm:text-xl font-black text-slate-900">Live Activity</h3>
+                        <span className="px-3 py-1 bg-emerald-50 text-emerald-600 text-[10px] font-black uppercase tracking-wider rounded-full flex items-center gap-1">
+                            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                            Live
+                        </span>
+                    </div>
 
-                    <div className="space-y-3 sm:space-y-4">
-                        {[
-                            { title: 'Add New Member', icon: 'fas fa-user-plus', color: 'text-[#4f46e5]', bg: 'bg-[#f1f5f9]' },
-                            { title: 'Send Announcement', icon: 'fas fa-bullhorn', color: 'text-[#0ea5e9]', bg: 'bg-[#f1f5f9]' },
-                            { title: 'Performance Report', icon: 'fas fa-chart-pie', color: 'text-[#8b5cf6]', bg: 'bg-[#f1f5f9]' },
-                        ].map((action, i) => (
-                            <button key={i} className="w-full flex items-center gap-3 sm:gap-4 p-3 sm:p-4 rounded-2xl sm:rounded-3xl bg-[#f8fafc] hover:bg-white hover:shadow-lg hover:shadow-indigo-500/5 transition-all group border border-transparent hover:border-slate-100 active:scale-95">
-                                <div className={`w-11 h-11 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl ${action.bg} ${action.color} flex items-center justify-center text-base sm:text-lg shadow-sm group-hover:scale-110 transition-transform`}>
-                                    <i className={action.icon}></i>
+                    <div className="flex-1 overflow-y-auto pr-2 space-y-3 sm:space-y-4 custom-scrollbar">
+                        {checkinLogs.length > 0 ? (
+                            checkinLogs.map((log, i) => (
+                                <div key={i} className="flex items-center gap-4 p-4 rounded-2xl bg-slate-50 border border-slate-100">
+                                    <div className="w-10 h-10 rounded-full bg-indigo-100 flex items-center justify-center overflow-hidden border-2 border-white shadow-sm flex-shrink-0">
+                                        {log.photo ? (
+                                            <img src={log.photo} alt={log.userName} className="w-full h-full object-cover" />
+                                        ) : (
+                                            <span className="text-xs font-black text-indigo-600">{log.userName?.[0]}</span>
+                                        )}
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                        <p className="font-bold text-slate-900 text-sm truncate">{log.userName || "Unknown User"}</p>
+                                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Checked In</p>
+                                    </div>
+                                    <div className="text-right">
+                                        <span className="block font-black text-slate-900 text-xs">
+                                            {new Date(log.checkInTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                        </span>
+                                    </div>
                                 </div>
-                                <span className="font-bold text-sm sm:text-base text-slate-700">{action.title}</span>
-                            </button>
-                        ))}
+                            ))
+                        ) : (
+                            <div className="h-full flex flex-col items-center justify-center text-slate-400 opacity-60">
+                                <i className="fas fa-clipboard-check text-4xl mb-3"></i>
+                                <p className="text-xs font-bold uppercase tracking-widest text-center">No check-ins today yet</p>
+                            </div>
+                        )}
                     </div>
                 </div>
             </div>

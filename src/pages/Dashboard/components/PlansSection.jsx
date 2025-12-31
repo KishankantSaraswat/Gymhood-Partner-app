@@ -104,7 +104,8 @@ const PlansSection = ({ gym }) => {
                 validity: Number(formData.validity),
                 price: Number(formData.price),
                 discountPercent: Number(formData.discountPercent),
-                duration: Number(formData.duration)
+                duration: Number(formData.duration),
+                features: formData.features.join(', ')
             };
 
             let data;

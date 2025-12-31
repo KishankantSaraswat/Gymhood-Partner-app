@@ -13,6 +13,9 @@ const GymProfile = ({ gym }) => {
     const [isEditingPhotos, setIsEditingPhotos] = useState(false);
     const [uploadingPhotos, setUploadingPhotos] = useState({});
 
+    const [isEditingEquipment, setIsEditingEquipment] = useState(false);
+    const [editedEquipment, setEditedEquipment] = useState([]);
+
     useEffect(() => {
         const fetchGymAndRatings = async () => {
             try {
@@ -103,19 +106,44 @@ const GymProfile = ({ gym }) => {
     };
 
     const saveShifts = async () => {
-        const cleanShifts = editedShifts.map(({ day, name, startTime, endTime, gender }) => ({
-            day, name, startTime, endTime, gender
+        const cleanShifts = editedShifts.map(({ day, name, startTime, endTime, gender, capacity }) => ({
+            day, name, startTime, endTime, gender, capacity: Number(capacity) || 0
         }));
         await handleSave({ ...gymData, shifts: cleanShifts });
         setIsEditingShifts(false);
     };
 
     const addShift = () => {
-        setEditedShifts([...editedShifts, { day: 'Monday', name: 'Morning', startTime: '06:00', endTime: '10:00', gender: 'unisex' }]);
+        setEditedShifts([...editedShifts, { day: 'Monday', name: 'Morning', startTime: '06:00', endTime: '10:00', gender: 'unisex', capacity: 20 }]);
     };
 
     const removeShift = (index) => {
         setEditedShifts(editedShifts.filter((_, i) => i !== index));
+    };
+
+    const toggleEquipmentEdit = () => {
+        setEditedEquipment(gymData.equipmentList || []);
+        setIsEditingEquipment(!isEditingEquipment);
+    };
+
+    const handleEquipmentChange = (index, value) => {
+        const newEquipment = [...editedEquipment];
+        newEquipment[index] = value;
+        setEditedEquipment(newEquipment);
+    };
+
+    const addEquipmentItem = () => {
+        setEditedEquipment([...editedEquipment, '']);
+    };
+
+    const removeEquipmentItem = (index) => {
+        setEditedEquipment(editedEquipment.filter((_, i) => i !== index));
+    };
+
+    const saveEquipment = async () => {
+        const cleanEquipment = editedEquipment.filter(item => item && item.trim() !== '');
+        await handleSave({ ...gymData, equipmentList: cleanEquipment });
+        setIsEditingEquipment(false);
     };
 
     const handlePhotoUpload = async (field, file) => {
@@ -362,7 +390,15 @@ const GymProfile = ({ gym }) => {
                         </div>
 
                         <div>
-                            <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 ml-1">Gym Equipment</label>
+                            <div className="flex justify-between items-end mb-3">
+                                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Gym Equipment</label>
+                                <button
+                                    onClick={toggleEquipmentEdit}
+                                    className="text-[10px] font-bold text-indigo-600 hover:text-indigo-800 uppercase tracking-wider flex items-center gap-1"
+                                >
+                                    <i className="fas fa-edit"></i> Edit
+                                </button>
+                            </div>
                             {gymData.equipmentList?.length > 0 ? (
                                 <div className="flex flex-wrap gap-2">
                                     {gymData.equipmentList.map((eq, i) => (
@@ -374,7 +410,10 @@ const GymProfile = ({ gym }) => {
                             ) : (
                                 <div className="p-10 bg-slate-50 border-2 border-dashed border-slate-200 rounded-[2rem] text-center">
                                     <p className="text-slate-400 font-bold mb-4 italic text-sm">No equipment listed yet</p>
-                                    <button className="bg-slate-900 text-white px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-black transition-all">
+                                    <button
+                                        onClick={toggleEquipmentEdit}
+                                        className="bg-slate-900 text-white px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-black transition-all"
+                                    >
                                         ADD EQUIPMENT
                                     </button>
                                 </div>
@@ -476,7 +515,7 @@ const GymProfile = ({ gym }) => {
             {isEditingShifts && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
                     <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={toggleShiftEdit} />
-                    <div className="bg-white w-full max-w-4xl max-h-[90vh] rounded-[2.5rem] shadow-2xl relative z-10 overflow-hidden flex flex-col animate-modal-in">
+                    <div className="bg-white w-full max-w-6xl max-h-[90vh] rounded-[2.5rem] shadow-2xl relative z-10 overflow-hidden flex flex-col animate-modal-in">
                         <div className="p-8 sm:p-10 border-b border-slate-100 flex justify-between items-center bg-slate-50">
                             <div>
                                 <h3 className="text-2xl font-black text-slate-900 tracking-tight">MANAGE OPERATING SHIFTS</h3>
@@ -495,7 +534,7 @@ const GymProfile = ({ gym }) => {
                                     >
                                         <i className="fas fa-trash"></i>
                                     </button>
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-4">
                                         <div>
                                             <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2 block">Day</label>
                                             <select
@@ -537,6 +576,17 @@ const GymProfile = ({ gym }) => {
                                             />
                                         </div>
                                         <div>
+                                            <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2 block">Capacity</label>
+                                            <input
+                                                type="number"
+                                                min="1"
+                                                value={shift.capacity || ''}
+                                                placeholder="Max Users"
+                                                onChange={(e) => handleShiftChange(idx, 'capacity', e.target.value)}
+                                                className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 font-bold text-slate-700 text-xs focus:ring-2 focus:ring-indigo-500 outline-none"
+                                            />
+                                        </div>
+                                        <div>
                                             <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2 block">Gender</label>
                                             <select
                                                 value={shift.gender}
@@ -572,6 +622,65 @@ const GymProfile = ({ gym }) => {
                                 className="flex-[2] px-8 py-4 rounded-2xl font-black text-xs tracking-widest text-white bg-slate-900 hover:bg-black transition-all shadow-xl shadow-slate-200 disabled:opacity-50 uppercase"
                             >
                                 {saving ? 'SAVING CHANGES...' : 'SAVE ALL SHIFTS'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {isEditingEquipment && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                    <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={toggleEquipmentEdit} />
+                    <div className="bg-white w-full max-w-2xl max-h-[90vh] rounded-[2.5rem] shadow-2xl relative z-10 overflow-hidden flex flex-col animate-modal-in">
+                        <div className="p-8 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+                            <div>
+                                <h3 className="text-2xl font-black text-slate-900 tracking-tight">GYM EQUIPMENT</h3>
+                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] mt-1">List the equipment available at your gym</p>
+                            </div>
+                            <button onClick={toggleEquipmentEdit} className="w-10 h-10 rounded-xl bg-white border border-slate-200 text-slate-400 hover:text-slate-600 flex items-center justify-center shadow-sm transition-all">
+                                <i className="fas fa-times"></i>
+                            </button>
+                        </div>
+                        <div className="p-8 overflow-y-auto flex-1 space-y-4">
+                            {editedEquipment.map((item, idx) => (
+                                <div key={idx} className="flex gap-3">
+                                    <input
+                                        type="text"
+                                        value={item}
+                                        placeholder="e.g. Treadmill, Dumbbells, Bench Press"
+                                        onChange={(e) => handleEquipmentChange(idx, e.target.value)}
+                                        className="flex-1 bg-white border border-slate-200 rounded-xl px-4 py-3 font-bold text-slate-700 text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
+                                        autoFocus={item === ''}
+                                    />
+                                    <button
+                                        onClick={() => removeEquipmentItem(idx)}
+                                        className="w-12 rounded-xl bg-red-50 text-red-500 hover:bg-red-100 transition-all flex items-center justify-center"
+                                    >
+                                        <i className="fas fa-trash"></i>
+                                    </button>
+                                </div>
+                            ))}
+                            <button
+                                onClick={addEquipmentItem}
+                                className="w-full py-4 border-2 border-dashed border-slate-200 rounded-2xl text-slate-400 font-black text-[10px] tracking-widest hover:border-indigo-500 hover:text-indigo-500 transition-all flex items-center justify-center gap-2 uppercase"
+                            >
+                                <i className="fas fa-plus-circle"></i>
+                                Add Item
+                            </button>
+                        </div>
+                        <div className="p-8 border-t border-slate-100 flex gap-4 bg-slate-50">
+                            <button
+                                onClick={toggleEquipmentEdit}
+                                className="flex-1 px-6 py-3.5 rounded-xl font-black text-xs tracking-widest text-slate-500 bg-white border border-slate-200 hover:bg-slate-100 transition-all uppercase"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={saveEquipment}
+                                disabled={saving}
+                                className="flex-[2] px-6 py-3.5 rounded-xl font-black text-xs tracking-widest text-white bg-slate-900 hover:bg-black transition-all shadow-xl shadow-slate-200 disabled:opacity-50 uppercase"
+                            >
+                                {saving ? 'SAVING...' : 'SAVE EQUIPMENT'}
                             </button>
                         </div>
                     </div>
