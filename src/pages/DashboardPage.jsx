@@ -125,32 +125,18 @@ const DashboardPage = () => {
                 <div className="h-16 sm:h-20 bg-white border-b border-slate-100 flex items-center px-4 sm:px-6 md:px-10 z-10 justify-between">
                     {/* Left: Logo and Title (visible on mobile) */}
                     <div className="flex items-center gap-3">
-                        {/* Mobile Hamburger - Replaces logo on mobile when wanted, or sits next to it. 
-                             Here we show Hamburger on mobile. */}
+                        {/* Mobile Hamburger */}
                         <button
                             onClick={() => setIsSidebarOpen(true)}
-                            className="md:hidden w-10 h-10 -ml-2 flex items-center justify-center text-slate-700 hover:bg-slate-50 rounded-lg transition-colors"
+                            className="md:hidden w-10 h-10 -ml-2 flex items-center justify-center text-slate-700 bg-slate-50 border border-slate-100 rounded-xl transition-all active:scale-90"
                         >
                             <i className="fas fa-bars text-lg"></i>
                         </button>
 
-                        {/* Logo - visible only on mobile */}
-                        <div className="md:hidden flex items-center gap-2">
-                            <div className="w-9 h-9 rounded-xl bg-[#6366f1] flex items-center justify-center text-white shadow-indigo-200 shadow-lg">
-                                <i className="fas fa-dumbbell text-sm"></i>
-                            </div>
-                            <div className="flex flex-col leading-none pt-1">
-                                <span className="text-base font-black text-slate-900 tracking-tight">
-                                    Gymshood
-                                </span>
-                                <span className="text-[8px] font-black uppercase tracking-[0.2em] text-[#6366f1] mt-0.5">
-                                    Partner
-                                </span>
-                            </div>
-                        </div>
-
-                        {/* Title - hidden on mobile, visible on desktop */}
-                        <h1 className="hidden md:block text-xl sm:text-2xl font-black text-[#1e293b]">{titles[activeSection]}</h1>
+                        {/* Title - responsive sizing */}
+                        <h1 className="text-lg sm:text-2xl font-black text-[#1e293b] truncate max-w-[150px] sm:max-w-none">
+                            {titles[activeSection]}
+                        </h1>
                     </div>
 
                     {/* Right: Icons and Profile Menu */}

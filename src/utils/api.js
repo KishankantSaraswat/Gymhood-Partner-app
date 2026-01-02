@@ -73,15 +73,22 @@ const api = {
 export const getMediaUrl = (url) => {
     if (!url) return "";
 
-    // If it's already a full URL but not to localhost, return as is
-    if (url.startsWith('http') && !url.includes('localhost:8000')) {
+    // If it's already a full URL that's NOT localhost:8000, return as is
+    // This handles cases where we might have stored full external URLs in the past
+    if (url.startsWith('http') && !url.includes('localhost:8000') && !url.includes('147.93.30.41')) {
         return url;
     }
 
-    // Extract the path if it's a localhost URL
+    // Extract the path if it contains localhost:8000 or the old IP
     let path = url;
     if (url.includes('localhost:8000')) {
         path = url.split('localhost:8000')[1];
+    } else if (url.includes('147.93.30.41')) {
+        path = url.split('147.93.30.41')[1];
+        // Handle cases where the IP might have stayed but port changed or path changed
+        if (path.includes(':8000')) {
+            path = path.split(':8000')[1];
+        }
     }
 
     // Ensure path starts with /
@@ -90,7 +97,9 @@ export const getMediaUrl = (url) => {
     }
 
     // Combine with current BASE_URL from env
-    return `${BASE_URL}${path}`;
+    // Ensure we don't have double slashes
+    const cleanBaseUrl = BASE_URL.replace(/\/+$/, "");
+    return `${cleanBaseUrl}${path}`;
 };
 
 const apiWrapper = {

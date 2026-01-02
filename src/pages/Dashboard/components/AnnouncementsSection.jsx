@@ -9,10 +9,28 @@ const AnnouncementsSection = ({ gym }) => {
 
     const fetchAnnouncements = async () => {
         try {
-            const data = await api.get('/gymdb/announcements/gym');
-            if (data.success) {
-                setAnnouncements(data.announcements);
+            const [gymData, adminData] = await Promise.all([
+                api.get('/gymdb/announcements/gym'),
+                api.get('/admin/announcements/user')
+            ]);
+
+            let combinedAnnouncements = [];
+            if (gymData.success) {
+                combinedAnnouncements = [...gymData.announcements];
             }
+            if (adminData.success) {
+                // Add admin announcements, marking them as such
+                const adminAnns = adminData.announcements.map(ann => ({
+                    ...ann,
+                    isAdmin: true,
+                    gymId: { name: 'Admin' }
+                }));
+                combinedAnnouncements = [...combinedAnnouncements, ...adminAnns];
+            }
+
+            // Sort by createdAt descending
+            combinedAnnouncements.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+            setAnnouncements(combinedAnnouncements);
         } catch (err) {
             console.error('Error fetching announcements:', err);
         } finally {

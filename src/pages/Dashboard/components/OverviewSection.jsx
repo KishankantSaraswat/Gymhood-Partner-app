@@ -131,16 +131,16 @@ const OverviewSection = ({ gym }) => {
                             style={{ backfaceVisibility: 'hidden' }}
                         >
                             <div className="relative z-10 h-full flex flex-col">
-                                <div className="flex justify-between items-start mb-6">
-                                    <div className="flex items-center gap-4">
-                                        <div className="w-14 h-14 bg-white/10 rounded-2xl flex items-center justify-center backdrop-blur-md border border-white/10 shadow-inner">
-                                            <i className="fas fa-dumbbell text-2xl text-emerald-400"></i>
+                                <div className="flex justify-between items-start mb-4 sm:mb-6">
+                                    <div className="flex items-center gap-3 sm:gap-4">
+                                        <div className="w-12 h-12 sm:w-14 sm:h-14 bg-white/10 rounded-2xl flex items-center justify-center backdrop-blur-md border border-white/10 shadow-inner">
+                                            <i className="fas fa-dumbbell text-xl sm:text-2xl text-emerald-400"></i>
                                         </div>
                                         <div>
-                                            <h3 className="text-2xl lg:text-3xl font-black tracking-tight text-white mb-1">{gym?.name || "My Gym"}</h3>
+                                            <h3 className="text-xl sm:text-2xl lg:text-3xl font-black tracking-tight text-white mb-1 truncate max-w-[150px] sm:max-w-none">{gym?.name || "My Gym"}</h3>
                                             <div className="flex items-center gap-2">
                                                 <span className={`w-2 h-2 rounded-full ${gym?.isVerified ? "bg-emerald-400 shadow-[0_0_10px_rgba(52,211,153,0.5)]" : "bg-amber-400"}`}></span>
-                                                <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">
+                                                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
                                                     {gym?.isVerified ? "Verified Partner" : "Verification Pending"}
                                                 </span>
                                             </div>
@@ -298,7 +298,7 @@ const OverviewSection = ({ gym }) => {
                 </div>
 
                 {/* Right Card: Live Check-ins */}
-                <div className="lg:col-span-5 bg-white rounded-2xl sm:rounded-[2.5rem] p-6 sm:p-8 lg:p-10 border border-slate-100 shadow-sm flex flex-col h-[500px]">
+                <div className="lg:col-span-5 bg-white rounded-2xl sm:rounded-[2.5rem] p-6 sm:p-8 lg:p-10 border border-slate-100 shadow-sm flex flex-col h-auto lg:h-[500px] min-h-[400px]">
                     <div className="flex justify-between items-center mb-6 sm:mb-8">
                         <h3 className="text-lg sm:text-xl font-black text-slate-900">Live Activity</h3>
                         <span className="px-3 py-1 bg-emerald-50 text-emerald-600 text-[10px] font-black uppercase tracking-wider rounded-full flex items-center gap-1">
@@ -341,14 +341,14 @@ const OverviewSection = ({ gym }) => {
 
             <style dangerouslySetInnerHTML={{
                 __html: `
-        @keyframes scan {
-          0% { top: 10%; }
-          100% { top: 90%; }
-        }
-        .animate-scan {
-          animation: scan 2.5s ease-in-out infinite;
-        }
-      `}} />
+                @keyframes scan {
+                0% { top: 10%; }
+                100% { top: 90%; }
+                }
+                .animate-scan {
+                animation: scan 2.5s ease-in-out infinite;
+                }
+            `}} />
         </div>
     );
 };
