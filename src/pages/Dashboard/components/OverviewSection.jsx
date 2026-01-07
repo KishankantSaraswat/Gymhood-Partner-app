@@ -26,26 +26,52 @@ const OverviewSection = ({ gym }) => {
         const fetchStats = async () => {
             try {
                 // Fetch stats in parallel
-                const [membersData, revenueData, statsData, plansData, shiftData, logsData] = await Promise.all([
-                    api.get(`/gymdb/dashboard/members/${gym._id}`),
-                    api.get(`/gymdb/dashboard/revenue/${gym._id}`),
-                    api.get(`/gymdb/dashboard/stats/${gym._id}`),
-                    api.get(`/gymdb/plans/gym/${gym._id}`),
-                    api.get(`/gymdb/gym/${gym._id}/active-capacity`),
-                    api.get(`/gymdb/gym/${gym._id}/today-register`)
-                ]);
+                const endpoints = [
+                    `/gymdb/dashboard/members/${gym._id}`,
+                    `/gymdb/dashboard/revenue/${gym._id}`,
+                    `/gymdb/dashboard/stats/${gym._id}`,
+                    `/gymdb/plans/gym/${gym._id}`,
+                    `/gymdb/gym/${gym._id}/active-capacity`,
+                    `/gymdb/gym/${gym._id}/today-register`
+                ];
 
-                // Extract active members
-                const activeMembers = membersData.success ? membersData.data.planDistribution.totalActiveUsers : 0;
+                const results = await Promise.allSettled(endpoints.map(ep => api.get(ep)));
 
-                // Extract monthly revenue (from monthly totals)
+                const [membersRes, revenueRes, statsRes, plansRes, shiftRes, logsRes] = results;
+
+                const membersData = membersRes.status === 'fulfilled' ? membersRes.value : { success: false };
+                const revenueData = revenueRes.status === 'fulfilled' ? revenueRes.value : { success: false };
+                const statsData = statsRes.status === 'fulfilled' ? statsRes.value : { success: false };
+                const plansData = plansRes.status === 'fulfilled' ? plansRes.value : { success: false };
+                const shiftData = shiftRes.status === 'fulfilled' ? shiftRes.value : { success: false };
+                const logsData = logsRes.status === 'fulfilled' ? logsRes.value : { success: false };
+
+                console.log('📊 Dashboard Data Received (Settled):', {
+                    members: membersData,
+                    revenue: revenueData,
+                    stats: statsData,
+                    plans: plansData
+                });
+
+                // Extract active members: Try statsData first, then fallback to membersData
+                let activeMembers = 0;
+                if (statsData.success && statsData.stats?.totalActiveMembers !== undefined) {
+                    activeMembers = statsData.stats.totalActiveMembers;
+                } else if (membersData.success && membersData.data?.planDistribution?.totalActiveUsers !== undefined) {
+                    activeMembers = membersData.data.planDistribution.totalActiveUsers;
+                }
+
+                // Extract expiring soon count
+                const expiringSoon = membersData.success ? (membersData.data?.expiringSoon || 0) : 0;
+
+                // Extract monthly revenue
                 let monthlyRevenue = 0;
-                if (revenueData.success && revenueData.data.monthly.totals.length > 0) {
+                if (revenueData.success && revenueData.data?.monthly?.totals?.length > 0) {
                     monthlyRevenue = revenueData.data.monthly.totals[revenueData.data.monthly.totals.length - 1];
                 }
 
                 // Extract nearby users
-                const nearbyUsers = statsData.success ? statsData.stats.totalNearbyUsers : 0;
+                const nearbyUsers = statsData.success ? (statsData.stats?.totalNearbyUsers || 0) : 0;
 
                 // Extract plans count
                 const totalPlans = plansData.success ? (plansData.plans?.length || 0) : 0;
@@ -53,7 +79,7 @@ const OverviewSection = ({ gym }) => {
                 setDashboardStats({
                     activeMembers,
                     monthlyRevenue,
-                    expiringSoon: 0,
+                    expiringSoon,
                     totalPlans,
                     nearbyUsers
                 });

@@ -3,6 +3,7 @@ const BASE_URL = import.meta.env.VITE_API_BASE_URL;
 const api = {
     get: async (endpoint) => {
         const token = localStorage.getItem('gymshood_token');
+        console.log(`🌐 API GET Request: ${BASE_URL}${endpoint}`);
         const response = await fetch(`${BASE_URL}${endpoint}`, {
             method: 'GET',
             headers: {
@@ -11,12 +12,23 @@ const api = {
                 'ngrok-skip-browser-warning': 'true'
             }
         });
-        const data = await response.json();
+
+        const contentType = response.headers.get("content-type");
+        let data;
+        if (contentType && contentType.includes("application/json")) {
+            data = await response.json();
+        } else {
+            const text = await response.text();
+            console.error(`❌ API Error (Non-JSON): ${response.status} ${response.statusText}`, text);
+            throw new Error(`Server returned ${response.status} (${response.statusText}). Please check if API URL is correct.`);
+        }
+
         if (!response.ok) throw new Error(data.message || 'Something went wrong');
         return data;
     },
     post: async (endpoint, body) => {
         const token = localStorage.getItem('gymshood_token');
+        console.log(`🌐 API POST Request: ${BASE_URL}${endpoint}`, body);
         const response = await fetch(`${BASE_URL}${endpoint}`, {
             method: 'POST',
             headers: {
@@ -26,12 +38,23 @@ const api = {
             },
             body: JSON.stringify(body)
         });
-        const data = await response.json();
+
+        const contentType = response.headers.get("content-type");
+        let data;
+        if (contentType && contentType.includes("application/json")) {
+            data = await response.json();
+        } else {
+            const text = await response.text();
+            console.error(`❌ API Error (Non-JSON): ${response.status} ${response.statusText}`, text);
+            throw new Error(`Server returned ${response.status} (${response.statusText}). Please check if API URL is correct.`);
+        }
+
         if (!response.ok) throw new Error(data.message || 'Something went wrong');
         return data;
     },
     put: async (endpoint, body) => {
         const token = localStorage.getItem('gymshood_token');
+        console.log(`🌐 API PUT Request: ${BASE_URL}${endpoint}`, body);
         const response = await fetch(`${BASE_URL}${endpoint}`, {
             method: 'PUT',
             headers: {
@@ -41,12 +64,23 @@ const api = {
             },
             body: JSON.stringify(body)
         });
-        const data = await response.json();
+
+        const contentType = response.headers.get("content-type");
+        let data;
+        if (contentType && contentType.includes("application/json")) {
+            data = await response.json();
+        } else {
+            const text = await response.text();
+            console.error(`❌ API Error (Non-JSON): ${response.status} ${response.statusText}`, text);
+            throw new Error(`Server returned ${response.status} (${response.statusText}). Please check if API URL is correct.`);
+        }
+
         if (!response.ok) throw new Error(data.message || 'Something went wrong');
         return data;
     },
     delete: async (endpoint) => {
         const token = localStorage.getItem('gymshood_token');
+        console.log(`🌐 API DELETE Request: ${BASE_URL}${endpoint}`);
         const response = await fetch(`${BASE_URL}${endpoint}`, {
             method: 'DELETE',
             headers: {
@@ -55,7 +89,17 @@ const api = {
                 'ngrok-skip-browser-warning': 'true'
             }
         });
-        const data = await response.json();
+
+        const contentType = response.headers.get("content-type");
+        let data;
+        if (contentType && contentType.includes("application/json")) {
+            data = await response.json();
+        } else {
+            const text = await response.text();
+            console.error(`❌ API Error (Non-JSON): ${response.status} ${response.statusText}`, text);
+            throw new Error(`Server returned ${response.status} (${response.statusText}). Please check if API URL is correct.`);
+        }
+
         if (!response.ok) throw new Error(data.message || 'Something went wrong');
         return data;
     },
@@ -63,12 +107,23 @@ const api = {
         const formData = new FormData();
         formData.append('file', file);
 
+        console.log(`🌐 API UPLOAD Request: ${BASE_URL}/upload`);
         // Use main backend URL for uploads
         const response = await fetch(`${BASE_URL}/upload`, {
             method: 'POST',
             body: formData
         });
-        const data = await response.json();
+
+        const contentType = response.headers.get("content-type");
+        let data;
+        if (contentType && contentType.includes("application/json")) {
+            data = await response.json();
+        } else {
+            const text = await response.text();
+            console.error(`❌ API Error (Non-JSON): ${response.status} ${response.statusText}`, text);
+            throw new Error(`Server returned ${response.status} (${response.statusText}). Please check if API URL is correct.`);
+        }
+
         if (!response.ok) throw new Error(data.message || 'Upload failed');
         return data;
     }
