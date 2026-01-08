@@ -6,6 +6,7 @@ import LoginPage from './pages/LoginPage';
 import DashboardPage from './pages/DashboardPage';
 import SignupPage from './pages/Signup/SignupPage';
 import AdminDashboardPage from './pages/AdminDashboardPage';
+import PrivacyPolicyPage from './pages/PrivacyPolicyPage';
 
 function App() {
   return (
@@ -18,6 +19,7 @@ function App() {
           <Route path="/signup" element={<SignupPage />} />
           <Route path="/dashboard" element={<DashboardPage />} />
           <Route path="/admin-dashboard" element={<AdminDashboardPage />} />
+          <Route path="/privacy-policy" element={<PrivacyPolicyPage />} />
         </Routes>
       </div>
     </Router>

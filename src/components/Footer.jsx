@@ -38,7 +38,18 @@ const Footer = () => {
                             <h4 className="text-white font-bold mb-6">{col.title}</h4>
                             <ul className="space-y-3 text-sm">
                                 {col.links.map((link, j) => (
-                                    <li key={j}><a href="#" className="hover:text-indigo-400 transition-colors">{link}</a></li>
+                                    <li key={j}>
+                                        {link === 'Privacy Policy' ? (
+                                            <button
+                                                onClick={() => navigate('/privacy-policy')}
+                                                className="hover:text-indigo-400 transition-colors text-left"
+                                            >
+                                                {link}
+                                            </button>
+                                        ) : (
+                                            <a href="#" className="hover:text-indigo-400 transition-colors">{link}</a>
+                                        )}
+                                    </li>
                                 ))}
                             </ul>
                         </div>
