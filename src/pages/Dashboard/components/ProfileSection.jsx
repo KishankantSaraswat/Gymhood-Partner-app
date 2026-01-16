@@ -263,7 +263,7 @@ const GymProfile = ({ gym }) => {
             {/* Cover Banner */}
             <div className="bg-white">
                 <div className="max-w-6xl mx-auto">
-                    <div className="h-96 bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-500 relative overflow-hidden group">
+                    <div className="h-48 md:h-64 lg:h-96 bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-500 relative overflow-hidden group">
                         {coverImageUrl ? (
                             <img src={coverImageUrl} className="w-full h-full object-cover object-center" alt="Cover" />
                         ) : (
@@ -298,10 +298,10 @@ const GymProfile = ({ gym }) => {
 
                     {/* Logo and Gym Name Section */}
                     <div className="px-8 pb-4 relative">
-                        <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
+                        <div className="flex flex-col md:flex-row items-center md:items-end md:justify-between gap-4">
                             {/* Logo and Name */}
-                            <div className="flex items-end gap-4 -mt-20">
-                                <div className="w-40 h-40 rounded-full bg-white p-1 shadow-xl border-4 border-white relative group">
+                            <div className="flex flex-col md:flex-row items-center md:items-end gap-4 -mt-16 md:-mt-20">
+                                <div className="w-32 h-32 md:w-40 md:h-40 rounded-full bg-white p-1 shadow-xl border-4 border-white relative group">
                                     <div className="w-full h-full rounded-full overflow-hidden">
                                         <img
                                             src={mainImageUrl}
@@ -326,7 +326,7 @@ const GymProfile = ({ gym }) => {
                                         />
                                     </label>
                                 </div>
-                                <div className="pb-2">
+                                <div className="pb-2 text-center md:text-left">
                                     <h1 className="text-3xl font-bold text-gray-900">{gymData.name}</h1>
                                     <p className="text-gray-600 text-sm mt-1">
                                         {gymData.isVerified ? (
@@ -354,7 +354,7 @@ const GymProfile = ({ gym }) => {
 
                         {/* Navigation Tabs */}
                         <div className="border-t border-gray-200 mt-4">
-                            <div className="flex gap-2 overflow-x-auto">
+                            <div className="flex gap-2 overflow-x-auto pb-2 md:pb-0 no-scrollbar">
                                 {[
                                     { id: 'about', label: 'About', icon: 'fa-info-circle' },
                                     { id: 'photos', label: 'Photos', icon: 'fa-images' },
@@ -489,7 +489,7 @@ const GymProfile = ({ gym }) => {
                                 </div>
 
                                 {galleryPhotos.length > 0 ? (
-                                    <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                                         {galleryPhotos.map((photo, i) => (
                                             <div key={i} className="aspect-square rounded-lg overflow-hidden bg-gray-100 group relative">
                                                 <img src={photo.url} alt={photo.label} className="w-full h-full object-cover transition-transform group-hover:scale-110" />
