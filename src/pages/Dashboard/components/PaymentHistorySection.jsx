@@ -1,40 +1,47 @@
 import React, { useState, useEffect } from 'react';
 import api from '../../../utils/api';
 import GymLoader from '../../../components/GymLoader';
+import SettlementRequestModal from './SettlementRequestModal';
 
 const PaymentHistorySection = ({ gym }) => {
     const [balance, setBalance] = useState(0);
     const [transactions, setTransactions] = useState([]);
+    const [settlements, setSettlements] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [filterType, setFilterType] = useState('All');
+    const [activeTab, setActiveTab] = useState('transactions'); // 'transactions' | 'settlements'
+    const [showSettleModal, setShowSettleModal] = useState(false);
+
+    const fetchPaymentData = async () => {
+        try {
+            setLoading(true);
+            // Fetch wallet balance
+            const balanceRes = await api.get(`/payment/gym-balance/${gym._id}`);
+            if (balanceRes.success) {
+                setBalance(balanceRes.data.balance);
+            }
+
+            // Fetch transactions
+            const transactionsRes = await api.get('/gymdb/api/transactions');
+            if (transactionsRes.success) {
+                setTransactions(transactionsRes.data);
+            }
+
+            // Fetch settlement requests
+            const settlementsRes = await api.get('/payment/my-settlement-requests');
+            if (settlementsRes.success) {
+                setSettlements(settlementsRes.data);
+            }
+        } catch (err) {
+            console.error('Error fetching payment data:', err);
+            setError('Failed to load payment information.');
+        } finally {
+            setLoading(false);
+        }
+    };
 
     useEffect(() => {
-        const fetchPaymentData = async () => {
-            try {
-                setLoading(true);
-                // Fetch wallet balance
-                const balanceRes = await api.get(`/payment/gym-balance/${gym._id}`);
-                if (balanceRes.success) {
-                    setBalance(balanceRes.data.balance);
-                }
-
-                // Fetch transactions
-                const transactionsRes = await api.get('/gymdb/api/transactions');
-                if (transactionsRes.success) {
-                    // Filter transactions related to this gym if necessary, 
-                    // but the backend might already be doing that for the owner.
-                    // Looking at the controller, it returns transactions for the userId.
-                    setTransactions(transactionsRes.data);
-                }
-            } catch (err) {
-                console.error('Error fetching payment data:', err);
-                setError('Failed to load payment information.');
-            } finally {
-                setLoading(false);
-            }
-        };
-
         if (gym?._id) {
             fetchPaymentData();
         }
@@ -56,6 +63,10 @@ const PaymentHistorySection = ({ gym }) => {
         const subject = `settlement request-GynHood Partner`;
         const body = `Dear Support Team,\n\ni would like to request the settle ment of my gyHood Partner account \naccount details\nGymid: ${gym._id}\nplease process my settlement req\nthankyou\nbest regards,\n${ownerName}`;
         window.location.href = `mailto:support@gymshood.com?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+    };
+
+    const handleRequestSettlement = () => {
+        setShowSettleModal(true);
     };
 
     if (loading) return (
@@ -104,124 +115,206 @@ const PaymentHistorySection = ({ gym }) => {
 
                     <div className="flex flex-col sm:flex-row gap-3 relative z-10 w-full sm:w-auto">
                         <button
+                            onClick={handleRequestSettlement}
+                            className="bg-white text-indigo-600 px-6 py-4 rounded-2xl font-black text-sm uppercase tracking-widest flex items-center justify-center gap-3 hover:scale-105 active:scale-95 transition-all shadow-lg"
+                        >
+                            <i className="fas fa-paper-plane text-lg"></i>
+                            Request Now
+                        </button>
+                        <button
                             onClick={handleWhatsAppSettlement}
                             className="bg-[#25D366] text-white px-6 py-4 rounded-2xl font-black text-sm uppercase tracking-widest flex items-center justify-center gap-3 hover:scale-105 active:scale-95 transition-all shadow-lg shadow-green-200"
                         >
                             <i className="fab fa-whatsapp text-lg"></i>
                             WhatsApp
                         </button>
-                        <button
-                            onClick={handleMailSettlement}
-                            className="bg-white text-indigo-600 px-6 py-4 rounded-2xl font-black text-sm uppercase tracking-widest flex items-center justify-center gap-3 hover:scale-105 active:scale-95 transition-all shadow-lg"
-                        >
-                            <i className="fas fa-envelope text-lg"></i>
-                            Mail Admin
-                        </button>
                     </div>
                 </div>
             </div>
 
-            {/* Transactions Section */}
+            {/* Content Tabs */}
             <div className="bg-white rounded-[2rem] shadow-sm border border-slate-100 overflow-hidden">
                 <div className="p-6 sm:p-8 border-b border-slate-50 flex flex-col sm:flex-row items-center justify-between gap-4">
-                    <div>
-                        <h3 className="text-xl font-black text-slate-900">Transaction History</h3>
-                        <p className="text-slate-400 text-sm font-medium">View all your recent wallet activities</p>
+                    <div className="flex items-center gap-8">
+                        <button
+                            onClick={() => setActiveTab('transactions')}
+                            className={`pb-2 text-base font-black transition-all border-b-2 ${activeTab === 'transactions' ? 'text-indigo-600 border-indigo-600' : 'text-slate-400 border-transparent hover:text-slate-600'}`}
+                        >
+                            Transactions
+                        </button>
+                        <button
+                            onClick={() => setActiveTab('settlements')}
+                            className={`pb-2 text-base font-black transition-all border-b-2 ${activeTab === 'settlements' ? 'text-indigo-600 border-indigo-600' : 'text-slate-400 border-transparent hover:text-slate-600'}`}
+                        >
+                            Settlement Requests
+                        </button>
                     </div>
 
-                    <div className="flex items-center gap-2 bg-slate-50 p-1 rounded-2xl">
-                        {['All', 'Credit', 'Debit'].map((type) => (
-                            <button
-                                key={type}
-                                onClick={() => setFilterType(type)}
-                                className={`px-5 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${filterType === type
-                                    ? 'bg-white text-indigo-600 shadow-sm'
-                                    : 'text-slate-400 hover:text-slate-600'
-                                    }`}
-                            >
-                                {type}
-                            </button>
-                        ))}
-                    </div>
+                    {activeTab === 'transactions' && (
+                        <div className="flex items-center gap-2 bg-slate-50 p-1 rounded-2xl">
+                            {['All', 'Credit', 'Debit'].map((type) => (
+                                <button
+                                    key={type}
+                                    onClick={() => setFilterType(type)}
+                                    className={`px-5 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${filterType === type
+                                        ? 'bg-white text-indigo-600 shadow-sm'
+                                        : 'text-slate-400 hover:text-slate-600'
+                                        }`}
+                                >
+                                    {type}
+                                </button>
+                            ))}
+                        </div>
+                    )}
                 </div>
 
                 <div className="overflow-x-auto">
-                    <table className="w-full text-left">
-                        <thead>
-                            <tr className="bg-slate-50/50">
-                                <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Transaction Details</th>
-                                <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Date</th>
-                                <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Type</th>
-                                <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Amount</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-50">
-                            {filteredTransactions.length > 0 ? (
-                                filteredTransactions.map((txn, idx) => (
-                                    <tr key={txn._id || idx} className="hover:bg-slate-50/50 transition-colors group">
-                                        <td className="px-8 py-6">
-                                            <div className="flex items-center gap-4">
-                                                <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${txn.type === 'Credit' ? 'bg-emerald-50 text-emerald-600' : 'bg-red-50 text-red-600'
+                    {activeTab === 'transactions' ? (
+                        <table className="w-full text-left">
+                            <thead>
+                                <tr className="bg-slate-50/50">
+                                    <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Transaction Details</th>
+                                    <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Date</th>
+                                    <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Type</th>
+                                    <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Amount</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-50">
+                                {filteredTransactions.length > 0 ? (
+                                    filteredTransactions.map((txn, idx) => (
+                                        <tr key={txn._id || idx} className="hover:bg-slate-50/50 transition-colors group">
+                                            <td className="px-8 py-6">
+                                                <div className="flex items-center gap-4">
+                                                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${txn.type === 'Credit' ? 'bg-emerald-50 text-emerald-600' : 'bg-red-50 text-red-600'
+                                                        }`}>
+                                                        <i className={`fas ${txn.type === 'Credit' ? 'fa-arrow-down' : 'fa-arrow-up'} text-sm`}></i>
+                                                    </div>
+                                                    <div>
+                                                        <p className="font-bold text-slate-800 text-sm">{txn.reason || 'Wallet Transaction'}</p>
+                                                        <p className="text-[10px] text-slate-400 font-black uppercase tracking-tighter">ID: {txn.razorpayOrderId || txn._id?.substring(0, 12)}</p>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td className="px-8 py-6">
+                                                <p className="text-sm font-bold text-slate-600">
+                                                    {new Date(txn.createdAt).toLocaleDateString(undefined, {
+                                                        day: 'numeric',
+                                                        month: 'short',
+                                                        year: 'numeric'
+                                                    })}
+                                                </p>
+                                                <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest">
+                                                    {new Date(txn.createdAt).toLocaleTimeString(undefined, {
+                                                        hour: '2-digit',
+                                                        minute: '2-digit'
+                                                    })}
+                                                </p>
+                                            </td>
+                                            <td className="px-8 py-6">
+                                                <span className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest ${txn.type === 'Credit'
+                                                    ? 'bg-emerald-50 text-emerald-600 border border-emerald-100'
+                                                    : 'bg-red-50 text-red-600 border border-red-100'
                                                     }`}>
-                                                    <i className={`fas ${txn.type === 'Credit' ? 'fa-arrow-down' : 'fa-arrow-up'} text-sm`}></i>
+                                                    {txn.type}
+                                                </span>
+                                            </td>
+                                            <td className="px-8 py-6 text-right">
+                                                <p className={`text-lg font-black ${txn.type === 'Credit' ? 'text-emerald-600' : 'text-slate-900'
+                                                    }`}>
+                                                    {txn.type === 'Credit' ? '+' : '-'}₹{txn.amount.toLocaleString()}
+                                                </p>
+                                                <p className={`text-[10px] font-black uppercase tracking-widest ${txn.status === 'Completed' ? 'text-slate-400' : 'text-amber-500'
+                                                    }`}>
+                                                    {txn.status}
+                                                </p>
+                                            </td>
+                                        </tr>
+                                    ))
+                                ) : (
+                                    <tr>
+                                        <td colSpan="4" className="px-8 py-20 text-center">
+                                            <div className="flex flex-col items-center gap-3">
+                                                <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center text-slate-200">
+                                                    <i className="fas fa-receipt text-2xl"></i>
                                                 </div>
-                                                <div>
-                                                    <p className="font-bold text-slate-800 text-sm">{txn.reason || 'Wallet Transaction'}</p>
-                                                    <p className="text-[10px] text-slate-400 font-black uppercase tracking-tighter">ID: {txn.razorpayOrderId || txn._id?.substring(0, 12)}</p>
-                                                </div>
+                                                <p className="text-slate-400 font-bold">No transactions found</p>
                                             </div>
-                                        </td>
-                                        <td className="px-8 py-6">
-                                            <p className="text-sm font-bold text-slate-600">
-                                                {new Date(txn.createdAt).toLocaleDateString(undefined, {
-                                                    day: 'numeric',
-                                                    month: 'short',
-                                                    year: 'numeric'
-                                                })}
-                                            </p>
-                                            <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest">
-                                                {new Date(txn.createdAt).toLocaleTimeString(undefined, {
-                                                    hour: '2-digit',
-                                                    minute: '2-digit'
-                                                })}
-                                            </p>
-                                        </td>
-                                        <td className="px-8 py-6">
-                                            <span className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest ${txn.type === 'Credit'
-                                                ? 'bg-emerald-50 text-emerald-600 border border-emerald-100'
-                                                : 'bg-red-50 text-red-600 border border-red-100'
-                                                }`}>
-                                                {txn.type}
-                                            </span>
-                                        </td>
-                                        <td className="px-8 py-6 text-right">
-                                            <p className={`text-lg font-black ${txn.type === 'Credit' ? 'text-emerald-600' : 'text-slate-900'
-                                                }`}>
-                                                {txn.type === 'Credit' ? '+' : '-'}₹{txn.amount.toLocaleString()}
-                                            </p>
-                                            <p className={`text-[10px] font-black uppercase tracking-widest ${txn.status === 'Completed' ? 'text-slate-400' : 'text-amber-500'
-                                                }`}>
-                                                {txn.status}
-                                            </p>
                                         </td>
                                     </tr>
-                                ))
-                            ) : (
-                                <tr>
-                                    <td colSpan="4" className="px-8 py-20 text-center">
-                                        <div className="flex flex-col items-center gap-3">
-                                            <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center text-slate-200">
-                                                <i className="fas fa-receipt text-2xl"></i>
-                                            </div>
-                                            <p className="text-slate-400 font-bold">No transactions found matching your filter</p>
-                                        </div>
-                                    </td>
+                                )}
+                            </tbody>
+                        </table>
+                    ) : (
+                        <table className="w-full text-left">
+                            <thead>
+                                <tr className="bg-slate-50/50">
+                                    <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Request Details</th>
+                                    <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Date</th>
+                                    <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Status</th>
+                                    <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Amount</th>
                                 </tr>
-                            )}
-                        </tbody>
-                    </table>
+                            </thead>
+                            <tbody className="divide-y divide-slate-50">
+                                {settlements.length > 0 ? (
+                                    settlements.map((req, idx) => (
+                                        <tr key={req._id || idx} className="hover:bg-slate-50/50 transition-colors group">
+                                            <td className="px-8 py-6">
+                                                <div className="flex items-center gap-4">
+                                                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center bg-indigo-50 text-indigo-600`}>
+                                                        <i className="fas fa-receipt text-sm"></i>
+                                                    </div>
+                                                    <div>
+                                                        <p className="font-bold text-slate-800 text-sm">Settlement Payout</p>
+                                                        <p className="text-[10px] text-slate-400 font-black uppercase tracking-tighter">ID: {req._id?.substring(0, 12)}</p>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td className="px-8 py-6">
+                                                <p className="text-sm font-bold text-slate-600">{new Date(req.createdAt).toLocaleDateString()}</p>
+                                                <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest">{new Date(req.createdAt).toLocaleTimeString()}</p>
+                                            </td>
+                                            <td className="px-8 py-6">
+                                                <span className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest ${req.status === 'Approved' ? 'bg-emerald-50 text-emerald-600' :
+                                                    req.status === 'Rejected' ? 'bg-red-50 text-red-600' :
+                                                        'bg-amber-50 text-amber-600'
+                                                    }`}>
+                                                    {req.status}
+                                                </span>
+                                            </td>
+                                            <td className="px-8 py-6 text-right">
+                                                <p className="text-lg font-black text-slate-900">₹{req.amount.toLocaleString()}</p>
+                                                {req.transactionId && (
+                                                    <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest">TXN: {req.transactionId.substring(0, 10)}</p>
+                                                )}
+                                            </td>
+                                        </tr>
+                                    ))
+                                ) : (
+                                    <tr>
+                                        <td colSpan="4" className="px-8 py-20 text-center">
+                                            <div className="flex flex-col items-center gap-3">
+                                                <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center text-slate-200">
+                                                    <i className="fas fa-history text-2xl"></i>
+                                                </div>
+                                                <p className="text-slate-400 font-bold">No settlement requests found</p>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                )}
+                            </tbody>
+                        </table>
+                    )}
                 </div>
             </div>
+
+            {showSettleModal && (
+                <SettlementRequestModal
+                    gym={gym}
+                    balance={balance}
+                    onClose={() => setShowSettleModal(false)}
+                    onSuccess={fetchPaymentData}
+                />
+            )}
         </div>
     );
 };

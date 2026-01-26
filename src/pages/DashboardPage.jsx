@@ -8,6 +8,8 @@ import PlansSection from './Dashboard/components/PlansSection';
 import AnnouncementsSection from './Dashboard/components/AnnouncementsSection';
 import PaymentHistorySection from './Dashboard/components/PaymentHistorySection';
 import PaymentContactInfoSection from './Dashboard/components/PaymentContactInfoSection';
+import CashPaymentSection from './Dashboard/components/CashPaymentSection';
+import ActiveMembersSection from './Dashboard/components/ActiveMembersSection';
 import GymLoader from '../components/GymLoader';
 import api from '../utils/api';
 
@@ -67,9 +69,12 @@ const DashboardPage = () => {
         'profile': 'My Gym Profile',
         'revenue': 'Revenue Analytics',
         'plans': 'Membership Plans',
+        'cash-payments': 'Pending Cash Requests',
         'announcements': 'Announcements',
         'payment-history': 'Payment History',
-        'payment-contact': 'Payment Contact Info'
+        'payment-contact': 'Payment Contact Info',
+        'active-members': 'Active Members',
+        'expiring-soon': 'Expiring Soon'
     };
 
     const renderSection = () => {
@@ -96,13 +101,16 @@ const DashboardPage = () => {
         );
 
         switch (activeSection) {
-            case 'overview': return <OverviewSection gym={gymData} />;
+            case 'overview': return <OverviewSection gym={gymData} onSectionChange={setActiveSection} />;
             case 'profile': return <ProfileSection gym={gymData} />;
             case 'revenue': return <RevenueSection gym={gymData} />;
             case 'plans': return <PlansSection gym={gymData} />;
+            case 'cash-payments': return <CashPaymentSection />;
             case 'announcements': return <AnnouncementsSection gym={gymData} />;
             case 'payment-history': return <PaymentHistorySection gym={gymData} />;
             case 'payment-contact': return <PaymentContactInfoSection gym={gymData} />;
+            case 'active-members': return <ActiveMembersSection gym={gymData} initialType="active" />;
+            case 'expiring-soon': return <ActiveMembersSection gym={gymData} initialType="expiring" />;
             default: return <OverviewSection gym={gymData} />;
         }
     };

@@ -3,9 +3,8 @@ import { QRCodeCanvas } from 'qrcode.react';
 import api from '../../../utils/api';
 import ActiveMembersModal from './ActiveMembersModal';
 
-const OverviewSection = ({ gym }) => {
+const OverviewSection = ({ gym, onSectionChange }) => {
     const [showQR, setShowQR] = useState(false);
-    const [showMembersModal, setShowMembersModal] = useState(false);
     const [dashboardStats, setDashboardStats] = useState({
         activeMembers: 0,
         monthlyRevenue: 0,
@@ -16,7 +15,10 @@ const OverviewSection = ({ gym }) => {
     const [loading, setLoading] = useState(true);
 
     const [activeShift, setActiveShift] = useState(null);
+
     const [checkinLogs, setCheckinLogs] = useState([]);
+    const [pendingRequests, setPendingRequests] = useState([]);
+    const [refreshTrigger, setRefreshTrigger] = useState(0);
 
     const gymId = gym?._id || "N/A";
 
@@ -32,12 +34,14 @@ const OverviewSection = ({ gym }) => {
                     `/gymdb/dashboard/stats/${gym._id}`,
                     `/gymdb/plans/gym/${gym._id}`,
                     `/gymdb/gym/${gym._id}/active-capacity`,
-                    `/gymdb/gym/${gym._id}/today-register`
+                    `/gymdb/gym/${gym._id}/active-capacity`,
+                    `/gymdb/gym/${gym._id}/today-register`,
+                    `/gymdb/gym/pending-requests`
                 ];
 
                 const results = await Promise.allSettled(endpoints.map(ep => api.get(ep)));
 
-                const [membersRes, revenueRes, statsRes, plansRes, shiftRes, logsRes] = results;
+                const [membersRes, revenueRes, statsRes, plansRes, shiftRes, logsRes, requestsRes] = results;
 
                 const membersData = membersRes.status === 'fulfilled' ? membersRes.value : { success: false };
                 const revenueData = revenueRes.status === 'fulfilled' ? revenueRes.value : { success: false };
@@ -45,6 +49,7 @@ const OverviewSection = ({ gym }) => {
                 const plansData = plansRes.status === 'fulfilled' ? plansRes.value : { success: false };
                 const shiftData = shiftRes.status === 'fulfilled' ? shiftRes.value : { success: false };
                 const logsData = logsRes.status === 'fulfilled' ? logsRes.value : { success: false };
+                const requestsData = requestsRes.status === 'fulfilled' ? requestsRes.value : { success: false };
 
                 console.log('📊 Dashboard Data Received (Settled):', {
                     members: membersData,
@@ -86,6 +91,7 @@ const OverviewSection = ({ gym }) => {
 
                 if (shiftData.success) setActiveShift(shiftData);
                 if (logsData.success) setCheckinLogs(logsData.register || []);
+                if (requestsData.success) setPendingRequests(requestsData.requests || []);
 
             } catch (err) {
                 console.error('Error fetching stats:', err);
@@ -95,7 +101,37 @@ const OverviewSection = ({ gym }) => {
         };
 
         fetchStats();
-    }, [gym?._id]);
+
+    }, [gym?._id, refreshTrigger]);
+
+    const handleApprove = async (transactionId) => {
+        try {
+            const data = await api.post('/gymdb/plans/approve-cash', { transactionId });
+            if (data.success) {
+                // Refresh data
+                setRefreshTrigger(prev => prev + 1);
+                // Optional: Show success toast
+            }
+        } catch (error) {
+            console.error("Approval failed", error);
+            alert("Approval failed: " + error.message);
+        }
+    };
+
+    const handleReject = async (transactionId) => {
+        const reason = prompt("Enter reason for rejection:");
+        if (!reason) return; // Cancelled
+
+        try {
+            const data = await api.post('/gymdb/plans/reject-cash', { transactionId, reason });
+            if (data.success) {
+                setRefreshTrigger(prev => prev + 1);
+            }
+        } catch (error) {
+            console.error("Rejection failed", error);
+            alert("Rejection failed: " + error.message);
+        }
+    };
 
     const stats = [
         { title: 'Active Members', value: dashboardStats.activeMembers, icon: 'fas fa-users-viewfinder', color: 'text-[#4f46e5]', bg: 'bg-[#eef2ff]' },
@@ -119,8 +155,12 @@ const OverviewSection = ({ gym }) => {
                 {stats.map((stat, i) => (
                     <div
                         key={i}
-                        onClick={() => stat.title === 'Active Members' && setShowMembersModal(true)}
-                        className={`bg-white rounded-2xl p-6 border border-slate-100 flex items-center justify-between shadow-sm hover:shadow-md transition-all group ${stat.title === 'Active Members' ? 'cursor-pointer hover:border-indigo-200' : ''}`}
+                        onClick={() => {
+                            if (stat.title === 'Active Members') onSectionChange('active-members');
+                            if (stat.title === 'Expiring Soon') onSectionChange('expiring-soon');
+                        }}
+                        className={`bg-white rounded-2xl p-6 border border-slate-100 flex items-center justify-between shadow-sm hover:shadow-md transition-all group ${(stat.title === 'Active Members' || stat.title === 'Expiring Soon') ? 'cursor-pointer hover:border-indigo-200' : ''
+                            }`}
                     >
                         <div className="space-y-1">
                             <p className="text-xs font-semibold text-slate-500">{stat.title}</p>
@@ -137,12 +177,6 @@ const OverviewSection = ({ gym }) => {
                 ))}
             </div>
 
-            {showMembersModal && (
-                <ActiveMembersModal
-                    gymId={gymId}
-                    onClose={() => setShowMembersModal(false)}
-                />
-            )}
 
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 sm:gap-8">
                 {/* Left Card: Gym Profile with Flip Animation */}
@@ -323,50 +357,107 @@ const OverviewSection = ({ gym }) => {
                     </div>
                 </div>
 
-                {/* Right Card: Live Check-ins */}
-                <div className="lg:col-span-5 bg-white rounded-2xl sm:rounded-[2.5rem] p-6 sm:p-8 lg:p-10 border border-slate-100 shadow-sm flex flex-col h-auto lg:h-[500px] min-h-[400px]">
-                    <div className="flex justify-between items-center mb-6 sm:mb-8">
-                        <h3 className="text-lg sm:text-xl font-black text-slate-900">Live Activity</h3>
-                        <span className="px-3 py-1 bg-emerald-50 text-emerald-600 text-[10px] font-black uppercase tracking-wider rounded-full flex items-center gap-1">
-                            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                            Live
-                        </span>
-                    </div>
+                {/* Right Column: Pending Approvals & Live Check-ins */}
+                <div className="lg:col-span-5 flex flex-col gap-6">
 
-                    <div className="flex-1 overflow-y-auto pr-2 space-y-3 sm:space-y-4 custom-scrollbar">
-                        {checkinLogs.length > 0 ? (
-                            checkinLogs.map((log, i) => (
-                                <div key={i} className="flex items-center gap-4 p-4 rounded-2xl bg-slate-50 border border-slate-100">
-                                    <div className="w-10 h-10 rounded-full bg-indigo-100 flex items-center justify-center overflow-hidden border-2 border-white shadow-sm flex-shrink-0">
-                                        {log.photo ? (
-                                            <img src={log.photo} alt={log.userName} className="w-full h-full object-cover" />
-                                        ) : (
-                                            <span className="text-xs font-black text-indigo-600">{log.userName?.[0]}</span>
-                                        )}
-                                    </div>
-                                    <div className="flex-1 min-w-0">
-                                        <p className="font-bold text-slate-900 text-sm truncate">{log.userName || "Unknown User"}</p>
-                                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Checked In</p>
-                                    </div>
-                                    <div className="text-right">
-                                        <span className="block font-black text-slate-900 text-xs">
-                                            {new Date(log.checkInTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                        </span>
-                                    </div>
-                                </div>
-                            ))
-                        ) : (
-                            <div className="h-full flex flex-col items-center justify-center text-slate-400 opacity-60">
-                                <i className="fas fa-clipboard-check text-4xl mb-3"></i>
-                                <p className="text-xs font-bold uppercase tracking-widest text-center">No check-ins today yet</p>
+                    {/* Pending Approvals Card */}
+                    {pendingRequests.length > 0 && (
+                        <div className="bg-white rounded-2xl sm:rounded-[2.5rem] p-6 sm:p-8 border border-amber-100 shadow-sm flex flex-col max-h-[400px]">
+                            <div className="flex justify-between items-center mb-6">
+                                <h3 className="text-lg sm:text-xl font-black text-slate-900">Pending Approvals</h3>
+                                <span className="px-3 py-1 bg-amber-50 text-amber-600 text-[10px] font-black uppercase tracking-wider rounded-full flex items-center gap-1 animate-pulse">
+                                    <i className="fas fa-clock"></i>
+                                    Action Needed
+                                </span>
                             </div>
-                        )}
+
+                            <div className="flex-1 overflow-y-auto pr-2 space-y-3 custom-scrollbar">
+                                {pendingRequests.map((req) => (
+                                    <div key={req._id} className="p-4 rounded-2xl bg-slate-50 border border-slate-100 flex flex-col gap-3">
+                                        <div className="flex items-start justify-between">
+                                            <div className="flex items-center gap-3">
+                                                {req.userId?.profile_picture ? (
+                                                    <img src={req.userId.profile_picture} alt="" className="w-10 h-10 rounded-full object-cover" />
+                                                ) : (
+                                                    <div className="w-10 h-10 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 font-bold">
+                                                        {req.userId?.name?.[0] || 'U'}
+                                                    </div>
+                                                )}
+                                                <div>
+                                                    <p className="font-bold text-slate-900 text-sm">{req.userId?.name || 'Unknown User'}</p>
+                                                    <p className="text-xs text-slate-500">{req.metadata?.planId?.name || 'Plan'}</p>
+                                                </div>
+                                            </div>
+                                            <div className="text-right">
+                                                <p className="font-black text-indigo-600">₹{req.amount}</p>
+                                                <p className="text-[10px] text-slate-400">{new Date(req.createdAt).toLocaleDateString()}</p>
+                                            </div>
+                                        </div>
+
+                                        <div className="flex gap-2 mt-1">
+                                            <button
+                                                onClick={() => handleApprove(req._id)}
+                                                className="flex-1 py-2 bg-emerald-500 text-white rounded-xl text-xs font-bold hover:bg-emerald-600 transition-colors"
+                                            >
+                                                Approve
+                                            </button>
+                                            <button
+                                                onClick={() => handleReject(req._id)}
+                                                className="flex-1 py-2 bg-slate-200 text-slate-600 rounded-xl text-xs font-bold hover:bg-slate-300 transition-colors"
+                                            >
+                                                Reject
+                                            </button>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Live Check-ins Card */}
+                    <div className="bg-white rounded-2xl sm:rounded-[2.5rem] p-6 sm:p-8 lg:p-10 border border-slate-100 shadow-sm flex flex-col h-auto lg:h-[500px] min-h-[400px] flex-1">
+                        <div className="flex justify-between items-center mb-6 sm:mb-8">
+                            <h3 className="text-lg sm:text-xl font-black text-slate-900">Live Activity</h3>
+                            <span className="px-3 py-1 bg-emerald-50 text-emerald-600 text-[10px] font-black uppercase tracking-wider rounded-full flex items-center gap-1">
+                                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                                Live
+                            </span>
+                        </div>
+
+                        <div className="flex-1 overflow-y-auto pr-2 space-y-3 sm:space-y-4 custom-scrollbar">
+                            {checkinLogs.length > 0 ? (
+                                checkinLogs.map((log, i) => (
+                                    <div key={i} className="flex items-center gap-4 p-4 rounded-2xl bg-slate-50 border border-slate-100">
+                                        <div className="w-10 h-10 rounded-full bg-indigo-100 flex items-center justify-center overflow-hidden border-2 border-white shadow-sm flex-shrink-0">
+                                            {log.photo ? (
+                                                <img src={log.photo} alt={log.userName} className="w-full h-full object-cover" />
+                                            ) : (
+                                                <span className="text-xs font-black text-indigo-600">{log.userName?.[0]}</span>
+                                            )}
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                            <p className="font-bold text-slate-900 text-sm truncate">{log.userName || "Unknown User"}</p>
+                                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Checked In</p>
+                                        </div>
+                                        <div className="text-right">
+                                            <span className="block font-black text-slate-900 text-xs">
+                                                {new Date(log.checkInTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                            </span>
+                                        </div>
+                                    </div>
+                                ))
+                            ) : (
+                                <div className="h-full flex flex-col items-center justify-center text-slate-400 opacity-60">
+                                    <i className="fas fa-clipboard-check text-4xl mb-3"></i>
+                                    <p className="text-xs font-bold uppercase tracking-widest text-center">No check-ins today yet</p>
+                                </div>
+                            )}
+                        </div>
                     </div>
                 </div>
-            </div>
 
-            <style dangerouslySetInnerHTML={{
-                __html: `
+                <style dangerouslySetInnerHTML={{
+                    __html: `
                 @keyframes scan {
                 0% { top: 10%; }
                 100% { top: 90%; }
@@ -375,6 +466,7 @@ const OverviewSection = ({ gym }) => {
                 animation: scan 2.5s ease-in-out infinite;
                 }
             `}} />
+            </div>
         </div>
     );
 };

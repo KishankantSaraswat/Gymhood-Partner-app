@@ -122,7 +122,12 @@ const LoginPage = () => {
                                 />
                             </div>
                             <div className="flex justify-end mt-1">
-                                <a href="#" className="text-xs text-indigo-600 hover:text-indigo-700 font-medium">Forgot Password?</a>
+                                <button
+                                    onClick={() => navigate('/forgot-password')}
+                                    className="text-xs text-indigo-600 hover:text-indigo-700 font-medium"
+                                >
+                                    Forgot Password?
+                                </button>
                             </div>
                         </div>
 

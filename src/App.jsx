@@ -8,6 +8,9 @@ import SignupPage from './pages/Signup/SignupPage';
 import AdminDashboardPage from './pages/AdminDashboardPage';
 import PrivacyPolicyPage from './pages/PrivacyPolicyPage';
 
+import ForgotPasswordPage from './pages/ForgotPasswordPage';
+import ResetPasswordPage from './pages/ResetPasswordPage';
+
 function App() {
   return (
     <Router>
@@ -17,6 +20,8 @@ function App() {
           <Route path="/partner" element={<PartnerPage />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/signup" element={<SignupPage />} />
+          <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+          <Route path="/reset-password" element={<ResetPasswordPage />} />
           <Route path="/dashboard" element={<DashboardPage />} />
           <Route path="/admin-dashboard" element={<AdminDashboardPage />} />
           <Route path="/privacy-policy" element={<PrivacyPolicyPage />} />

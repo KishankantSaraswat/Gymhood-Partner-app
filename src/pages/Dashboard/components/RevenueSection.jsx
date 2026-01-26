@@ -9,12 +9,17 @@ const RevenueSection = ({ gym }) => {
     const [revenueData, setRevenueData] = useState(null);
     const [memberData, setMemberData] = useState(null);
     const [transactions, setTransactions] = useState([]);
+    const [paymentFilter, setPaymentFilter] = useState('total');
+    const [revenueFilter, setRevenueFilter] = useState('monthly');
+    const [availableMonths, setAvailableMonths] = useState([]);
     const [expandedMonth, setExpandedMonth] = useState(null);
 
     const revenueChartRef = useRef(null);
     const planChartRef = useRef(null);
+    const paymentChartRef = useRef(null);
     const revenueChartInstance = useRef(null);
     const planChartInstance = useRef(null);
+    const paymentChartInstance = useRef(null);
 
     const fetchAnalytics = async () => {
         if (!gym?._id) return;
@@ -25,7 +30,12 @@ const RevenueSection = ({ gym }) => {
                 api.get('/gymdb/userPlans/gym')
             ]);
 
-            if (revResponse.success) setRevenueData(revResponse.data);
+            if (revResponse.success) {
+                setRevenueData(revResponse.data);
+                if (revResponse.data.paymentMethodBreakdown?.byMonth) {
+                    setAvailableMonths(Object.keys(revResponse.data.paymentMethodBreakdown.byMonth).sort().reverse());
+                }
+            }
             if (memResponse.success) setMemberData(memResponse.data);
             if (plansResponse.success) setTransactions(plansResponse.plans);
         } catch (err) {
@@ -44,12 +54,13 @@ const RevenueSection = ({ gym }) => {
             if (loading) return;
 
             // Revenue Chart
-            if (revenueChartRef.current && revenueData?.monthly) {
+            if (revenueChartRef.current && revenueData) {
                 const ctx = revenueChartRef.current.getContext('2d');
                 if (revenueChartInstance.current) revenueChartInstance.current.destroy();
 
-                const labels = revenueData.monthly.dates || revenueData.monthly.labels || [];
-                const totals = revenueData.monthly.totals || [];
+                const currentRevenueData = revenueData[revenueFilter] || { dates: [], totals: [] };
+                const labels = currentRevenueData.dates || currentRevenueData.labels || [];
+                const totals = currentRevenueData.totals || [];
 
                 revenueChartInstance.current = new Chart(ctx, {
                     type: 'bar',
@@ -123,6 +134,45 @@ const RevenueSection = ({ gym }) => {
                     }
                 });
             }
+
+            // Payment Method Chart
+            if (paymentChartRef.current && revenueData?.paymentMethodBreakdown) {
+                const ctx = paymentChartRef.current.getContext('2d');
+                if (paymentChartInstance.current) paymentChartInstance.current.destroy();
+
+                const breakdown = paymentFilter === 'total'
+                    ? revenueData.paymentMethodBreakdown
+                    : (revenueData.paymentMethodBreakdown.byMonth?.[paymentFilter] || { cash: 0, upi: 0 });
+
+                paymentChartInstance.current = new Chart(ctx, {
+                    type: 'pie',
+                    data: {
+                        labels: ['Cash', 'UPI'],
+                        datasets: [{
+                            data: [breakdown.cash, breakdown.upi],
+                            backgroundColor: ['#10b981', '#3b82f6'],
+                            borderWidth: 0
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { position: 'bottom' },
+                            tooltip: {
+                                callbacks: {
+                                    label: (context) => {
+                                        const value = context.parsed;
+                                        const total = [breakdown.cash, breakdown.upi].reduce((a, b) => a + b, 0);
+                                        const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
+                                        return ` ₹${value.toLocaleString()} (${percentage}%)`;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
+            }
         };
 
         createCharts();
@@ -130,8 +180,9 @@ const RevenueSection = ({ gym }) => {
         return () => {
             if (revenueChartInstance.current) revenueChartInstance.current.destroy();
             if (planChartInstance.current) planChartInstance.current.destroy();
+            if (paymentChartInstance.current) paymentChartInstance.current.destroy();
         };
-    }, [loading, revenueData, memberData]);
+    }, [loading, revenueData, memberData, paymentFilter, revenueFilter]);
 
     if (loading) {
         return (
@@ -148,16 +199,104 @@ const RevenueSection = ({ gym }) => {
                     <div className="flex items-center justify-between mb-8">
                         <div>
                             <h3 className="text-xl font-black text-slate-900 tracking-tight">Revenue Overview</h3>
-                            <p className="text-sm text-slate-500 font-medium">Monthly collection trends</p>
+                            <p className="text-sm text-slate-500 font-medium">{revenueFilter.charAt(0).toUpperCase() + revenueFilter.slice(1)} collection trends</p>
                         </div>
-                        <select className="bg-slate-50 border border-slate-100 rounded-xl px-4 py-2 text-sm font-bold text-slate-600 outline-none appearance-none cursor-pointer">
-                            <option>This Year</option>
-                            <option>Last Year</option>
-                        </select>
+                        <div className="relative">
+                            <select
+                                value={revenueFilter}
+                                onChange={(e) => setRevenueFilter(e.target.value)}
+                                className="bg-slate-50 border border-slate-100 rounded-xl px-4 py-2 text-sm font-bold text-slate-600 outline-none appearance-none cursor-pointer pr-10"
+                            >
+                                <option value="daily">Daily</option>
+                                <option value="weekly">Weekly</option>
+                                <option value="monthly">Monthly</option>
+                                <option value="yearly">Yearly</option>
+                            </select>
+                            <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
+                                <i className="fas fa-chevron-down text-xs"></i>
+                            </div>
+                        </div>
                     </div>
                     <div style={{ height: '350px' }}>
                         <canvas ref={revenueChartRef}></canvas>
                     </div>
+
+                    {/* Payment Method Breakdown */}
+                    {revenueData?.paymentMethodBreakdown && (
+                        <div className="mt-8">
+                            <div className="flex items-center justify-between mb-6">
+                                <div>
+                                    <h4 className="text-lg font-black text-slate-900 tracking-tight">Payment Method Breakdown</h4>
+                                    <p className="text-xs text-slate-500 font-medium">Cash vs UPI distribution</p>
+                                </div>
+                                <div className="relative">
+                                    <select
+                                        value={paymentFilter}
+                                        onChange={(e) => setPaymentFilter(e.target.value)}
+                                        className="bg-slate-50 border border-slate-100 rounded-xl px-4 py-2 text-sm font-bold text-slate-600 outline-none appearance-none cursor-pointer pr-10"
+                                    >
+                                        <option value="total">Overall Total</option>
+                                        {availableMonths.map(month => (
+                                            <option key={month} value={month}>{month}</option>
+                                        ))}
+                                    </select>
+                                    <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
+                                        <i className="fas fa-chevron-down text-xs"></i>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
+                                <div style={{ height: '250px' }}>
+                                    <canvas ref={paymentChartRef}></canvas>
+                                </div>
+                                <div className="grid grid-cols-1 gap-4">
+                                    <div className="bg-gradient-to-br from-emerald-50 to-emerald-100 p-6 rounded-2xl border border-emerald-200">
+                                        <div className="flex items-center gap-3 mb-2">
+                                            <div className="w-10 h-10 rounded-xl bg-emerald-500 text-white flex items-center justify-center">
+                                                <i className="fas fa-money-bill-wave"></i>
+                                            </div>
+                                            <span className="text-sm font-bold text-emerald-700 uppercase tracking-wider">Cash</span>
+                                        </div>
+                                        <p className="text-2xl font-black text-emerald-900">
+                                            ₹{(paymentFilter === 'total'
+                                                ? revenueData.paymentMethodBreakdown.cash
+                                                : (revenueData.paymentMethodBreakdown.byMonth?.[paymentFilter]?.cash || 0)
+                                            ).toLocaleString()}
+                                        </p>
+                                    </div>
+                                    <div className="bg-gradient-to-br from-blue-50 to-blue-100 p-6 rounded-2xl border border-blue-200">
+                                        <div className="flex items-center gap-3 mb-2">
+                                            <div className="w-10 h-10 rounded-xl bg-blue-500 text-white flex items-center justify-center">
+                                                <i className="fas fa-mobile-alt"></i>
+                                            </div>
+                                            <span className="text-sm font-bold text-blue-700 uppercase tracking-wider">UPI</span>
+                                        </div>
+                                        <p className="text-2xl font-black text-blue-900">
+                                            ₹{(paymentFilter === 'total'
+                                                ? revenueData.paymentMethodBreakdown.upi
+                                                : (revenueData.paymentMethodBreakdown.byMonth?.[paymentFilter]?.upi || 0)
+                                            ).toLocaleString()}
+                                        </p>
+                                    </div>
+                                    <div className="bg-gradient-to-br from-purple-50 to-purple-100 p-6 rounded-2xl border border-purple-200">
+                                        <div className="flex items-center gap-3 mb-2">
+                                            <div className="w-10 h-10 rounded-xl bg-purple-500 text-white flex items-center justify-center">
+                                                <i className="fas fa-chart-line"></i>
+                                            </div>
+                                            <span className="text-sm font-bold text-purple-700 uppercase tracking-wider">Total</span>
+                                        </div>
+                                        <p className="text-2xl font-black text-purple-900">
+                                            ₹{(paymentFilter === 'total'
+                                                ? revenueData.paymentMethodBreakdown.total
+                                                : (revenueData.paymentMethodBreakdown.byMonth?.[paymentFilter]?.total || 0)
+                                            ).toLocaleString()}
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
 
                     <div className="mt-8 space-y-4">
                         {(revenueData?.monthly?.dates || revenueData?.monthly?.labels || []).map((label, index) => {

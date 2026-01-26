@@ -3,6 +3,7 @@ import api from '../../../utils/api';
 
 const Sidebar = ({ activeSection, onSectionChange, gym, isOpen, onClose }) => {
     const [announcementCount, setAnnouncementCount] = useState(0);
+    const [pendingCashCount, setPendingCashCount] = useState(0);
 
     useEffect(() => {
         const fetchAnnouncements = async () => {
@@ -16,7 +17,19 @@ const Sidebar = ({ activeSection, onSectionChange, gym, isOpen, onClose }) => {
             }
         };
 
+        const fetchPendingCashRequests = async () => {
+            try {
+                const data = await api.get('/gymdb/gym/pending-requests');
+                if (data.success) {
+                    setPendingCashCount(data.count);
+                }
+            } catch (err) {
+                console.error('Error fetching pending cash requests:', err);
+            }
+        };
+
         fetchAnnouncements();
+        fetchPendingCashRequests();
     }, []);
 
     const menuItems = [
@@ -24,6 +37,7 @@ const Sidebar = ({ activeSection, onSectionChange, gym, isOpen, onClose }) => {
         { id: 'profile', icon: 'fas fa-building', label: 'My Gym Profile' },
         { id: 'revenue', icon: 'fas fa-chart-line', label: 'Revenue Analytics' },
         { id: 'plans', icon: 'fas fa-tags', label: 'Membership Plans' },
+        { id: 'cash-payments', icon: 'fas fa-money-bill-wave', label: 'Pending Cash Requests', badge: pendingCashCount },
         { id: 'announcements', icon: 'fas fa-bullhorn', label: 'Announcements', badge: announcementCount },
         { id: 'payment-history', icon: 'fas fa-history', label: 'Payment History' },
         { id: 'payment-contact', icon: 'fas fa-id-card', label: 'Payment Contact Info' },

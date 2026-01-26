@@ -119,8 +119,8 @@ const GymProfile = ({ gym }) => {
         setIsEditingShifts(false);
     };
 
-    const addShift = () => {
-        setEditedShifts([...editedShifts, { day: 'Monday', name: 'Morning', startTime: '06:00', endTime: '10:00', gender: 'unisex', capacity: 20 }]);
+    const addShift = (day = 'Monday') => {
+        setEditedShifts([...editedShifts, { day, name: 'Morning', startTime: '06:00', endTime: '10:00', gender: 'unisex', capacity: 20 }]);
     };
 
     const removeShift = (index) => {
@@ -667,92 +667,95 @@ const GymProfile = ({ gym }) => {
                             </button>
                         </div>
                         <div className="p-8 sm:p-10 overflow-y-auto flex-1 space-y-6">
-                            {editedShifts.map((shift, idx) => (
-                                <div key={idx} className="bg-slate-50 p-6 rounded-[2rem] border border-slate-200 relative group">
-                                    <button
-                                        onClick={() => removeShift(idx)}
-                                        className="absolute -top-3 -right-3 w-8 h-8 rounded-full bg-red-500 text-white flex items-center justify-center text-[10px] shadow-lg opacity-0 group-hover:opacity-100 transition-opacity"
-                                    >
-                                        <i className="fas fa-trash"></i>
-                                    </button>
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-x-4 gap-y-6">
-                                        <div className="lg:col-span-1">
-                                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 block ml-1">Day</label>
-                                            <select
-                                                value={shift.day}
-                                                onChange={(e) => handleShiftChange(idx, 'day', e.target.value)}
-                                                className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 font-bold text-slate-700 text-xs focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all shadow-sm"
+                            {['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'].map(day => {
+                                const dayShifts = editedShifts.map((s, i) => ({ ...s, originalIndex: i })).filter(s => s.day === day);
+                                return (
+                                    <div key={day} className="bg-slate-50/50 p-6 rounded-[2.5rem] border border-slate-100 space-y-4">
+                                        <div className="flex justify-between items-center px-2">
+                                            <h4 className="text-xl font-black text-slate-800 tracking-tight">{day}</h4>
+                                            <button
+                                                onClick={() => addShift(day)}
+                                                className="text-[10px] font-black text-indigo-600 hover:text-indigo-700 bg-indigo-50 px-4 py-2 rounded-xl transition-all uppercase tracking-widest flex items-center gap-2"
                                             >
-                                                {['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'].map(d => (
-                                                    <option key={d} value={d}>{d}</option>
-                                                ))}
-                                            </select>
+                                                <i className="fas fa-plus-circle"></i>
+                                                Add {day} Shift
+                                            </button>
                                         </div>
-                                        <div className="lg:col-span-1">
-                                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 block ml-1">Shift Name</label>
-                                            <input
-                                                type="text"
-                                                value={shift.name}
-                                                placeholder="e.g. Morning"
-                                                onChange={(e) => handleShiftChange(idx, 'name', e.target.value)}
-                                                className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 font-bold text-slate-700 text-xs focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all shadow-sm"
-                                            />
-                                        </div>
-                                        <div className="lg:col-span-1">
-                                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 block ml-1">Start Time</label>
-                                            <div className="relative">
-                                                <input
-                                                    type="time"
-                                                    value={shift.startTime}
-                                                    onChange={(e) => handleShiftChange(idx, 'startTime', e.target.value)}
-                                                    className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 font-bold text-slate-700 text-xs focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all shadow-sm"
-                                                />
-                                            </div>
-                                        </div>
-                                        <div className="lg:col-span-1">
-                                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 block ml-1">End Time</label>
-                                            <div className="relative">
-                                                <input
-                                                    type="time"
-                                                    value={shift.endTime}
-                                                    onChange={(e) => handleShiftChange(idx, 'endTime', e.target.value)}
-                                                    className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 font-bold text-slate-700 text-xs focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all shadow-sm"
-                                                />
-                                            </div>
-                                        </div>
-                                        <div className="lg:col-span-1">
-                                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 block ml-1">Capacity</label>
-                                            <input
-                                                type="number"
-                                                min="1"
-                                                value={shift.capacity || ''}
-                                                placeholder="Max Users"
-                                                onChange={(e) => handleShiftChange(idx, 'capacity', e.target.value)}
-                                                className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 font-bold text-slate-700 text-xs focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all shadow-sm"
-                                            />
-                                        </div>
-                                        <div className="lg:col-span-1">
-                                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 block ml-1">Gender</label>
-                                            <select
-                                                value={shift.gender}
-                                                onChange={(e) => handleShiftChange(idx, 'gender', e.target.value)}
-                                                className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 font-bold text-slate-700 text-xs focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all shadow-sm"
-                                            >
-                                                <option value="unisex">Unisex</option>
-                                                <option value="male">Men Only</option>
-                                                <option value="female">Women Only</option>
-                                            </select>
+
+                                        <div className="space-y-4">
+                                            {dayShifts.length > 0 ? (
+                                                dayShifts.map((shift) => (
+                                                    <div key={shift.originalIndex} className="bg-white p-6 rounded-[2rem] border border-slate-200 relative group shadow-sm">
+                                                        <button
+                                                            onClick={() => removeShift(shift.originalIndex)}
+                                                            className="absolute -top-3 -right-3 w-8 h-8 rounded-full bg-red-500 text-white flex items-center justify-center text-[10px] shadow-lg opacity-0 group-hover:opacity-100 transition-opacity z-10"
+                                                        >
+                                                            <i className="fas fa-trash"></i>
+                                                        </button>
+                                                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-x-4 gap-y-6">
+                                                            <div className="lg:col-span-1">
+                                                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 block ml-1">Shift Name</label>
+                                                                <input
+                                                                    type="text"
+                                                                    value={shift.name}
+                                                                    placeholder="e.g. Morning"
+                                                                    onChange={(e) => handleShiftChange(shift.originalIndex, 'name', e.target.value)}
+                                                                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 font-bold text-slate-700 text-xs focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all"
+                                                                />
+                                                            </div>
+                                                            <div className="lg:col-span-1">
+                                                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 block ml-1">Start Time</label>
+                                                                <input
+                                                                    type="time"
+                                                                    value={shift.startTime}
+                                                                    onChange={(e) => handleShiftChange(shift.originalIndex, 'startTime', e.target.value)}
+                                                                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 font-bold text-slate-700 text-xs focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all"
+                                                                />
+                                                            </div>
+                                                            <div className="lg:col-span-1">
+                                                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 block ml-1">End Time</label>
+                                                                <input
+                                                                    type="time"
+                                                                    value={shift.endTime}
+                                                                    onChange={(e) => handleShiftChange(shift.originalIndex, 'endTime', e.target.value)}
+                                                                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 font-bold text-slate-700 text-xs focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all"
+                                                                />
+                                                            </div>
+                                                            <div className="lg:col-span-1">
+                                                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 block ml-1">Capacity</label>
+                                                                <input
+                                                                    type="number"
+                                                                    min="1"
+                                                                    value={shift.capacity || ''}
+                                                                    placeholder="Max Users"
+                                                                    onChange={(e) => handleShiftChange(shift.originalIndex, 'capacity', e.target.value)}
+                                                                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 font-bold text-slate-700 text-xs focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all"
+                                                                />
+                                                            </div>
+                                                            <div className="lg:col-span-1">
+                                                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 block ml-1">Gender</label>
+                                                                <select
+                                                                    value={shift.gender}
+                                                                    onChange={(e) => handleShiftChange(shift.originalIndex, 'gender', e.target.value)}
+                                                                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 font-bold text-slate-700 text-xs focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all"
+                                                                >
+                                                                    <option value="unisex">Unisex</option>
+                                                                    <option value="male">Men Only</option>
+                                                                    <option value="female">Women Only</option>
+                                                                </select>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                ))
+                                            ) : (
+                                                <div className="py-8 text-center bg-white border border-dashed border-slate-200 rounded-[2rem]">
+                                                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">No shifts for {day}</p>
+                                                </div>
+                                            )}
                                         </div>
                                     </div>
-                                </div>
-                            ))}
-                            <button
-                                onClick={addShift}
-                                className="w-full py-6 border-2 border-dashed border-slate-200 rounded-[2rem] text-slate-400 font-black text-[10px] tracking-widest hover:border-indigo-500 hover:text-indigo-500 transition-all flex items-center justify-center gap-2 uppercase"
-                            >
-                                <i className="fas fa-plus-circle"></i>
-                                Add Another Shift
-                            </button>
+                                );
+                            })}
                         </div>
                         <div className="p-8 sm:p-10 border-t border-slate-100 flex gap-4 bg-slate-50">
                             <button

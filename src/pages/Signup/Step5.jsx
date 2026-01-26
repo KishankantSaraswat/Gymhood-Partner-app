@@ -33,9 +33,10 @@ const Step5 = ({ data, updateData }) => {
     };
 
     const docFields = [
-        { id: 'gstUrl', label: 'Business Registration / GST', desc: 'Proof of business ownership' },
-        { id: 'idProofUrl', label: 'Owner ID Proof', desc: 'Aadhar Card, PAN, or Passport' },
-        { id: 'certificationUrl', label: 'Gym Certification', desc: 'Trade license or safety certificate' }
+        { id: 'panUrl', label: 'PAN Card', desc: 'Personal or Business PAN Card (Mandatory)' },
+        { id: 'idProofUrl', label: 'Owner ID Proof', desc: 'Aadhar Card, PAN, or Passport (Mandatory)' },
+        { id: 'gstUrl', label: 'Business Registration / GST (Optional)', desc: 'Proof of business ownership' },
+        { id: 'certificationUrl', label: 'Gym Certification (Optional)', desc: 'Trade license or safety certificate' }
     ];
 
     return (

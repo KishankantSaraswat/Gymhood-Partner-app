@@ -32,7 +32,9 @@ const SignupPage = () => {
         gymType: 'unisex',
         facilities: [],
         photos: {},
-        documents: {},
+        documents: {
+            panUrl: ''
+        },
         coordinates: [] // [longitude, latitude]
     });
     const totalSteps = 5;
@@ -45,6 +47,34 @@ const SignupPage = () => {
     const stepNames = ["Owner & Gym Info", "Gym Type", "Facilities", "Photos", "Documents"];
 
     const nextStep = () => {
+        // Validation for Step 1
+        if (currentStep === 1) {
+            const requiredFields = ['name', 'ownerName', 'email', 'phone', 'password', 'about', 'gymSlogan', 'capacity', 'openTime', 'closeTime', 'address'];
+            const missingFields = requiredFields.filter(field => !formData[field]);
+
+            if (missingFields.length > 0) {
+                alert(`Please fill all mandatory fields: ${missingFields.join(', ')}`);
+                return;
+            }
+
+            if (!formData.coordinates || formData.coordinates.length !== 2) {
+                alert("Please click 'Get Current Location' to capture your gym's location.");
+                return;
+            }
+        }
+
+        // Validation for Step 5 (Documents)
+        if (currentStep === 5) {
+            if (!formData.documents?.panUrl) {
+                alert("PAN Card is mandatory. Please upload it to proceed.");
+                return;
+            }
+            if (!formData.documents?.idProofUrl) {
+                alert("Owner ID Proof is mandatory. Please upload it to proceed.");
+                return;
+            }
+        }
+
         if (currentStep < totalSteps) {
             setCurrentStep(currentStep + 1);
             window.scrollTo({ top: 0, behavior: 'smooth' });

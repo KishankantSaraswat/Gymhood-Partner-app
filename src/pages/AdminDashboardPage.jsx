@@ -23,6 +23,7 @@ const AdminDashboard = () => {
 
     const [gymsList, setGymsList] = useState([]);
     const [announcements, setAnnouncements] = useState([]);
+    const [settlementRequests, setSettlementRequests] = useState([]);
     const [newAnnouncement, setNewAnnouncement] = useState({ title: '', message: '', target: 'ALL_USERS', targetGyms: [] });
     const [revenuePeriod, setRevenuePeriod] = useState('totalRevenue');
     const [selectedGym, setSelectedGym] = useState(null);
@@ -35,15 +36,17 @@ const AdminDashboard = () => {
 
     const fetchData = async () => {
         try {
-            const [statsRes, gymsRes, annRes] = await Promise.all([
+            const [statsRes, gymsRes, annRes, settleRes] = await Promise.all([
                 api.get('/admin/stats'),
                 api.get('/admin/gyms/admin-all'),
-                api.get('/admin/announcements/user')
+                api.get('/admin/announcements/user'),
+                api.get('/payment/settlement-requests')
             ]);
 
             if (statsRes.success) setStats(statsRes.stats);
             if (gymsRes.success) setGymsList(gymsRes.gyms);
             if (annRes.success) setAnnouncements(annRes.announcements);
+            if (settleRes.success) setSettlementRequests(settleRes.data);
         } catch (err) {
             console.error('Error fetching data:', err);
         } finally {
@@ -134,6 +137,33 @@ const AdminDashboard = () => {
         }
     };
 
+    const handleSettlementStatus = async (requestId, status) => {
+        const adminNotes = status === 'Approved' ? 'Settlement processed' : prompt('Enter rejection reason:');
+        if (status === 'Rejected' && !adminNotes) return;
+
+        const transactionId = status === 'Approved' ? prompt('Enter Transaction ID (optional):') : '';
+
+        try {
+            const data = await api.put(`/payment/settlement/${requestId}/status`, {
+                status,
+                adminNotes,
+                transactionId
+            });
+            if (data.success) {
+                alert(`Settlement ${status.toLowerCase()} successfully`);
+                // Refresh data
+                const settleRes = await api.get('/payment/settlement-requests');
+                if (settleRes.success) setSettlementRequests(settleRes.data);
+
+                // Refresh gyms list to show updated balance
+                const gymsRes = await api.get('/admin/gyms/admin-all');
+                if (gymsRes.success) setGymsList(gymsRes.gyms);
+            }
+        } catch (err) {
+            alert('Action failed: ' + err.message);
+        }
+    };
+
     if (loading) {
         return (
             <div className="flex h-screen items-center justify-center bg-slate-50">
@@ -180,7 +210,7 @@ const AdminDashboard = () => {
                     {[
                         { icon: LayoutDashboard, label: 'Dashboard', section: 'overview' },
                         { icon: Dumbbell, label: 'Gym Partners', section: 'gyms' },
-                        // { icon: Coins, label: 'Revenue', section: 'revenue' },
+                        { icon: Coins, label: 'Settlements', section: 'settlements' },
                         { icon: Megaphone, label: 'Announcements', section: 'announcements' }
                     ].map(({ icon: Icon, label, section }) => (
                         <button key={section} onClick={() => { setActiveSection(section); setSidebarOpen(false); }}
@@ -562,6 +592,89 @@ const AdminDashboard = () => {
                             </div>
                         </div>
                     )}
+                    {/* Settlements */}
+                    {activeSection === 'settlements' && (
+                        <div className="space-y-6">
+                            <h2 className="text-2xl font-black text-slate-900">Settlement Requests</h2>
+                            <div className="bg-white rounded-3xl border border-slate-200 shadow-xl overflow-x-auto">
+                                <table className="w-full min-w-[1000px]">
+                                    <thead>
+                                        <tr className="bg-gradient-to-r from-slate-50 to-slate-100 text-slate-600 text-xs uppercase tracking-wider border-b border-slate-200">
+                                            <th className="p-5 text-left font-bold">Gym / Owner</th>
+                                            <th className="p-5 text-left font-bold">Bank / UPI Details</th>
+                                            <th className="p-5 text-left font-bold">Amount</th>
+                                            <th className="p-5 text-left font-bold">Requested At</th>
+                                            <th className="p-5 text-left font-bold">Status</th>
+                                            <th className="p-5 text-right font-bold">Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-slate-100">
+                                        {settlementRequests.length > 0 ? settlementRequests.map((req, idx) => (
+                                            <tr key={idx} className="hover:bg-slate-50 transition-all">
+                                                <td className="p-5">
+                                                    <div className="flex flex-col">
+                                                        <span className="font-bold text-slate-900">{req.gymId?.name || 'N/A'}</span>
+                                                        <span className="text-xs text-slate-500 font-medium">{req.ownerId?.name}</span>
+                                                    </div>
+                                                </td>
+                                                <td className="p-5">
+                                                    <div className="flex flex-col text-xs text-slate-600 space-y-1">
+                                                        {req.bankDetails?.upiId && <span className="flex items-center gap-1 font-bold text-indigo-600"><Zap className="w-3 h-3" /> UPI: {req.bankDetails.upiId}</span>}
+                                                        {req.bankDetails?.accountNumber && (
+                                                            <>
+                                                                <span className="flex items-center gap-1"><Activity className="w-3 h-3" /> A/C: {req.bankDetails.accountNumber}</span>
+                                                                <span className="flex items-center gap-1 ml-4 text-slate-400">IFSC: {req.bankDetails.ifscCode}</span>
+                                                                <span className="flex items-center gap-1 ml-4 text-slate-400">Name: {req.bankDetails.accountHolderName}</span>
+                                                            </>
+                                                        )}
+                                                    </div>
+                                                </td>
+                                                <td className="p-5">
+                                                    <span className="font-black text-lg text-slate-900">₹{req.amount.toLocaleString()}</span>
+                                                </td>
+                                                <td className="p-5 text-slate-500 text-xs font-semibold">
+                                                    {new Date(req.createdAt).toLocaleString()}
+                                                </td>
+                                                <td className="p-5">
+                                                    <span className={`px-4 py-1.5 rounded-full text-xs font-bold ${req.status === 'Approved' ? 'bg-emerald-100 text-emerald-700' :
+                                                        req.status === 'Rejected' ? 'bg-rose-100 text-rose-700' :
+                                                            'bg-amber-100 text-amber-700'
+                                                        }`}>{req.status}</span>
+                                                </td>
+                                                <td className="p-5 text-right">
+                                                    {req.status === 'Pending' && (
+                                                        <div className="flex justify-end gap-2">
+                                                            <button
+                                                                onClick={() => handleSettlementStatus(req._id, 'Approved')}
+                                                                className="bg-emerald-500 text-white p-2 rounded-xl hover:bg-emerald-600 shadow-md transition-all"
+                                                                title="Approve"
+                                                            >
+                                                                <Shield className="w-4 h-4" />
+                                                            </button>
+                                                            <button
+                                                                onClick={() => handleSettlementStatus(req._id, 'Rejected')}
+                                                                className="bg-rose-500 text-white p-2 rounded-xl hover:bg-rose-600 shadow-md transition-all"
+                                                                title="Reject"
+                                                            >
+                                                                <Trash2 className="w-4 h-4" />
+                                                            </button>
+                                                        </div>
+                                                    )}
+                                                </td>
+                                            </tr>
+                                        )) : (
+                                            <tr>
+                                                <td colSpan="6" className="p-20 text-center">
+                                                    <Activity className="w-12 h-12 text-slate-200 mx-auto mb-4" />
+                                                    <p className="text-slate-400 font-bold italic">No settlement requests found</p>
+                                                </td>
+                                            </tr>
+                                        )}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    )}
                 </div>
             </main>
             {/* Gym Details Modal */}
@@ -631,13 +744,19 @@ const AdminDashboard = () => {
                                                     <div><p className="text-xs font-bold text-slate-800">ID Proof</p></div>
                                                 </a>
                                             )}
+                                            {selectedGym.gym.verificationDocuments?.panUrl && (
+                                                <a href={api.getMediaUrl(selectedGym.gym.verificationDocuments.panUrl)} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 px-4 py-3 bg-slate-50 rounded-2xl border border-slate-200 hover:border-violet-500 transition-all group shrink-0">
+                                                    <div className="w-8 h-8 rounded-lg bg-indigo-100 text-indigo-600 flex items-center justify-center group-hover:bg-indigo-600 group-hover:text-white transition-all"><FileText className="w-4 h-4" /></div>
+                                                    <div><p className="text-xs font-bold text-slate-800">PAN Card</p></div>
+                                                </a>
+                                            )}
                                             {selectedGym.gym.verificationDocuments?.certificationUrl && (
                                                 <a href={api.getMediaUrl(selectedGym.gym.verificationDocuments.certificationUrl)} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 px-4 py-3 bg-slate-50 rounded-2xl border border-slate-200 hover:border-violet-500 transition-all group shrink-0">
                                                     <div className="w-8 h-8 rounded-lg bg-amber-100 text-amber-600 flex items-center justify-center group-hover:bg-amber-600 group-hover:text-white transition-all"><Award className="w-4 h-4" /></div>
                                                     <div><p className="text-xs font-bold text-slate-800">Certification</p></div>
                                                 </a>
                                             )}
-                                            {(!selectedGym.gym.verificationDocuments?.gstUrl && !selectedGym.gym.verificationDocuments?.idProofUrl && !selectedGym.gym.verificationDocuments?.certificationUrl) && (
+                                            {(!selectedGym.gym.verificationDocuments?.gstUrl && !selectedGym.gym.verificationDocuments?.idProofUrl && !selectedGym.gym.verificationDocuments?.panUrl && !selectedGym.gym.verificationDocuments?.certificationUrl) && (
                                                 <p className="text-slate-400 italic text-sm">No specific documents found</p>
                                             )}
                                         </div>
