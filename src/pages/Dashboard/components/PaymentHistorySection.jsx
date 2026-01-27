@@ -1,9 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import api from '../../../utils/api';
 import GymLoader from '../../../components/GymLoader';
-import SettlementRequestModal from './SettlementRequestModal';
 
-const PaymentHistorySection = ({ gym }) => {
+const PaymentHistorySection = ({ gym, onOpenSettlementModal }) => {
     const [balance, setBalance] = useState(0);
     const [transactions, setTransactions] = useState([]);
     const [settlements, setSettlements] = useState([]);
@@ -11,7 +10,6 @@ const PaymentHistorySection = ({ gym }) => {
     const [error, setError] = useState(null);
     const [filterType, setFilterType] = useState('All');
     const [activeTab, setActiveTab] = useState('transactions'); // 'transactions' | 'settlements'
-    const [showSettleModal, setShowSettleModal] = useState(false);
 
     const fetchPaymentData = async () => {
         try {
@@ -66,7 +64,9 @@ const PaymentHistorySection = ({ gym }) => {
     };
 
     const handleRequestSettlement = () => {
-        setShowSettleModal(true);
+        if (onOpenSettlementModal) {
+            onOpenSettlementModal(balance);
+        }
     };
 
     if (loading) return (
@@ -306,15 +306,6 @@ const PaymentHistorySection = ({ gym }) => {
                     )}
                 </div>
             </div>
-
-            {showSettleModal && (
-                <SettlementRequestModal
-                    gym={gym}
-                    balance={balance}
-                    onClose={() => setShowSettleModal(false)}
-                    onSuccess={fetchPaymentData}
-                />
-            )}
         </div>
     );
 };

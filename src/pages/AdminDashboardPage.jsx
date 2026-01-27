@@ -26,8 +26,11 @@ const AdminDashboard = () => {
     const [settlementRequests, setSettlementRequests] = useState([]);
     const [newAnnouncement, setNewAnnouncement] = useState({ title: '', message: '', target: 'ALL_USERS', targetGyms: [] });
     const [revenuePeriod, setRevenuePeriod] = useState('totalRevenue');
+    const [commissionPeriod, setCommissionPeriod] = useState('totalCommission');
     const [selectedGym, setSelectedGym] = useState(null);
     const [isModalLoading, setIsModalLoading] = useState(false);
+    const [updatingCommission, setUpdatingCommission] = useState(false);
+    const [tempCommission, setTempCommission] = useState(0);
 
     useEffect(() => {
         fetchData();
@@ -129,11 +132,46 @@ const AdminDashboard = () => {
             const data = await api.get(`/admin/gym/${gymId}/details`);
             if (data.success) {
                 setSelectedGym(data);
+                setTempCommission(data.gym.commissionRate || 0);
             }
         } catch (err) {
             alert('Failed to fetch gym details');
         } finally {
             setIsModalLoading(false);
+        }
+    };
+
+    const handleUpdateCommission = async (gymId, newRate) => {
+        const targetGymId = gymId || selectedGym?.gym?._id;
+        const targetRate = newRate !== undefined ? newRate : tempCommission;
+
+        if (targetRate < 0 || targetRate > 100) {
+            alert('Commission rate must be between 0 and 100');
+            return;
+        }
+        setUpdatingCommission(true);
+        try {
+            const data = await api.put(`/admin/gym/${targetGymId}/commission`, {
+                commissionRate: targetRate
+            });
+            if (data.success) {
+                alert('Commission rate updated successfully');
+                // Update local state if it matches selectedGym
+                if (selectedGym && selectedGym.gym._id === targetGymId) {
+                    setSelectedGym(prev => ({
+                        ...prev,
+                        gym: { ...prev.gym, commissionRate: data.commissionRate }
+                    }));
+                }
+                // Update gymsList as well to show in table
+                setGymsList(prev => prev.map(g =>
+                    g._id === targetGymId ? { ...g, commissionRate: data.commissionRate } : g
+                ));
+            }
+        } catch (err) {
+            alert('Failed to update commission rate');
+        } finally {
+            setUpdatingCommission(false);
         }
     };
 
@@ -211,6 +249,7 @@ const AdminDashboard = () => {
                         { icon: LayoutDashboard, label: 'Dashboard', section: 'overview' },
                         { icon: Dumbbell, label: 'Gym Partners', section: 'gyms' },
                         { icon: Coins, label: 'Settlements', section: 'settlements' },
+                        { icon: Settings, label: 'Commission', section: 'commission' },
                         { icon: Megaphone, label: 'Announcements', section: 'announcements' }
                     ].map(({ icon: Icon, label, section }) => (
                         <button key={section} onClick={() => { setActiveSection(section); setSidebarOpen(false); }}
@@ -243,7 +282,7 @@ const AdminDashboard = () => {
                 <header className="h-20 bg-white border-b border-slate-200 flex items-center justify-between px-4 sm:px-8 shadow-sm">
                     <div className="pl-14 md:pl-0">
                         <h1 className="text-xl sm:text-3xl font-black bg-gradient-to-r from-violet-600 to-indigo-600 bg-clip-text text-transparent">
-                            {activeSection === 'overview' ? 'Dashboard Overview' : activeSection === 'gyms' ? 'Gym Partners' : activeSection === 'revenue' ? 'Revenue Analytics' : 'Announcements'}
+                            {activeSection === 'overview' ? 'Dashboard Overview' : activeSection === 'gyms' ? 'Gym Partners' : activeSection === 'commission' ? 'Commission Settings' : activeSection === 'settlements' ? 'Settlements' : 'Announcements'}
                         </h1>
                         <p className="hidden sm:block text-sm text-slate-500 font-medium mt-1">Welcome back, Super Admin</p>
                     </div>
@@ -675,6 +714,114 @@ const AdminDashboard = () => {
                             </div>
                         </div>
                     )}
+
+                    {/* Commission Settings */}
+                    {activeSection === 'commission' && (
+                        <div className="space-y-6">
+                            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                                <h2 className="text-2xl font-black text-slate-900">Commission Management</h2>
+                                <div className="flex gap-3 w-full sm:w-auto">
+                                    <button className="bg-gradient-to-r from-violet-600 to-indigo-600 text-white px-5 py-3 rounded-2xl text-sm font-bold flex items-center gap-2 whitespace-nowrap">
+                                        <Filter className="w-4 h-4" /> Earnings Period:
+                                        <select
+                                            value={commissionPeriod}
+                                            onChange={(e) => setCommissionPeriod(e.target.value)}
+                                            className="bg-transparent border-none outline-none text-white font-bold cursor-pointer"
+                                        >
+                                            <option value="todayCommission" className="text-slate-900">Today</option>
+                                            <option value="monthCommission" className="text-slate-900">This Month</option>
+                                            <option value="yearCommission" className="text-slate-900">This Year</option>
+                                            <option value="totalCommission" className="text-slate-900">All Time</option>
+                                        </select>
+                                    </button>
+                                </div>
+                            </div>
+
+                            {/* Total Earnings Summary Card */}
+                            <div className="bg-gradient-to-br from-violet-600 to-indigo-700 p-8 rounded-3xl shadow-xl text-white">
+                                <div className="flex items-center gap-4 mb-4">
+                                    <div className="p-3 rounded-2xl bg-white/20 shadow-lg">
+                                        <Coins className="w-8 h-8 text-white" />
+                                    </div>
+                                    <div>
+                                        <p className="text-white/80 text-sm font-bold uppercase tracking-wider">Total Platform Earnings ({commissionPeriod.replace('Commission', '')})</p>
+                                        <h3 className="text-5xl font-black mt-1">
+                                            ₹{gymsList.reduce((sum, gym) => sum + (gym.revenueBreakdown?.[commissionPeriod] || 0), 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                                        </h3>
+                                    </div>
+                                </div>
+                                <div className="pt-6 border-t border-white/20">
+                                    <p className="text-white/60 text-xs font-medium">This total reflects the aggregated admin commission from all gym partners for the selected period.</p>
+                                </div>
+                            </div>
+
+                            <div className="bg-white rounded-3xl border border-slate-200 shadow-xl overflow-x-auto">
+                                <table className="w-full min-w-[800px]">
+                                    <thead>
+                                        <tr className="bg-gradient-to-r from-slate-50 to-slate-100 text-slate-600 text-xs uppercase tracking-wider border-b border-slate-200">
+                                            <th className="p-5 text-left font-bold">Gym Name</th>
+                                            <th className="p-5 text-left font-bold">Owner</th>
+                                            <th className="p-5 text-left font-bold">Earnings ({commissionPeriod.replace('Commission', '')})</th>
+                                            <th className="p-5 text-left font-bold">Current Rate</th>
+                                            <th className="p-5 text-right font-bold tracking-widest">Update Rate (%)</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-slate-100">
+                                        {gymsList.map((gym) => (
+                                            <tr key={gym._id} className="hover:bg-slate-50 transition-all group">
+                                                <td className="p-5">
+                                                    <div className="flex items-center gap-3">
+                                                        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center text-white font-bold shadow-lg">{gym.name[0]}</div>
+                                                        <span className="font-bold text-slate-900">{gym.name}</span>
+                                                    </div>
+                                                </td>
+                                                <td className="p-5 text-slate-600 font-medium">{gym.owner?.name || 'N/A'}</td>
+                                                <td className="p-5">
+                                                    <span className="font-black text-emerald-600">
+                                                        ₹{Number(gym.revenueBreakdown?.[commissionPeriod] || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                                                    </span>
+                                                </td>
+                                                <td className="p-5">
+                                                    <span className="inline-flex items-center px-3 py-1 rounded-full bg-violet-100 text-violet-700 font-black text-sm">
+                                                        {gym.commissionRate || 0}%
+                                                    </span>
+                                                </td>
+                                                <td className="p-5 text-right">
+                                                    <div className="flex justify-end gap-3 items-center">
+                                                        <div className="relative w-24">
+                                                            <input
+                                                                type="number"
+                                                                defaultValue={gym.commissionRate || 0}
+                                                                onBlur={async (e) => {
+                                                                    const val = Number(e.target.value);
+                                                                    if (val !== gym.commissionRate) {
+                                                                        await handleUpdateCommission(gym._id, val);
+                                                                    }
+                                                                }}
+                                                                className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:border-violet-500 outline-none font-bold text-slate-700 text-center"
+                                                                min="0"
+                                                                max="100"
+                                                            />
+                                                            <span className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-xs">%</span>
+                                                        </div>
+                                                        <button
+                                                            onClick={async (e) => {
+                                                                const input = e.target.closest('div').querySelector('input');
+                                                                await handleUpdateCommission(gym._id, Number(input.value));
+                                                            }}
+                                                            className="px-4 py-2 bg-gradient-to-r from-violet-600 to-indigo-600 text-white rounded-xl text-xs font-bold hover:shadow-md transition-all whitespace-nowrap"
+                                                        >
+                                                            Update
+                                                        </button>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    )}
                 </div>
             </main>
             {/* Gym Details Modal */}
@@ -810,6 +957,8 @@ const AdminDashboard = () => {
                                             </div>
                                         </div>
                                     </div>
+
+
 
                                     {/* Facilities */}
                                     <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100">

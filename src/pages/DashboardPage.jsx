@@ -10,17 +10,25 @@ import PaymentHistorySection from './Dashboard/components/PaymentHistorySection'
 import PaymentContactInfoSection from './Dashboard/components/PaymentContactInfoSection';
 import CashPaymentSection from './Dashboard/components/CashPaymentSection';
 import ActiveMembersSection from './Dashboard/components/ActiveMembersSection';
+import PlanFormSection from './Dashboard/components/PlanFormSection';
 import GymLoader from '../components/GymLoader';
+import SettlementRequestModal from './Dashboard/components/SettlementRequestModal';
+import PlanFormModal from './Dashboard/components/PlanFormSection';
 import api from '../utils/api';
 
 const DashboardPage = () => {
     const navigate = useNavigate();
     const [activeSection, setActiveSection] = useState('overview');
+    const [editingPlanId, setEditingPlanId] = useState(null);
     const [gymData, setGymData] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
     const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
+    const [showSettleModal, setShowSettleModal] = useState(false);
+    const [settlementModalData, setSettlementModalData] = useState(null);
+    const [showPlanModal, setShowPlanModal] = useState(false);
+    const [planModalData, setPlanModalData] = useState(null);
     const profileMenuRef = useRef(null);
 
     // Close profile menu on click outside
@@ -64,6 +72,26 @@ const DashboardPage = () => {
         fetchDashboardData();
     }, [navigate]);
 
+    const handleOpenSettlementModal = (balance) => {
+        setSettlementModalData({ balance });
+        setShowSettleModal(true);
+    };
+
+    const handleCloseSettlementModal = () => {
+        setShowSettleModal(false);
+        setSettlementModalData(null);
+    };
+
+    const handleOpenPlanModal = (planId = null) => {
+        setPlanModalData({ planId });
+        setShowPlanModal(true);
+    };
+
+    const handleClosePlanModal = () => {
+        setShowPlanModal(false);
+        setPlanModalData(null);
+    };
+
     const titles = {
         'overview': 'Dashboard Overview',
         'profile': 'My Gym Profile',
@@ -104,10 +132,26 @@ const DashboardPage = () => {
             case 'overview': return <OverviewSection gym={gymData} onSectionChange={setActiveSection} />;
             case 'profile': return <ProfileSection gym={gymData} />;
             case 'revenue': return <RevenueSection gym={gymData} />;
-            case 'plans': return <PlansSection gym={gymData} />;
+            case 'plans':
+                return <PlansSection
+                    gym={gymData}
+                    onCreatePlan={() => handleOpenPlanModal()}
+                    onEditPlan={(id) => handleOpenPlanModal(id)}
+                />;
+            case 'create-plan':
+                return <PlanFormSection gym={gymData} onBack={() => setActiveSection('plans')} />;
+            case 'edit-plan':
+                return <PlanFormSection
+                    gym={gymData}
+                    planId={editingPlanId}
+                    onBack={() => {
+                        setActiveSection('plans');
+                        setEditingPlanId(null);
+                    }}
+                />;
             case 'cash-payments': return <CashPaymentSection />;
             case 'announcements': return <AnnouncementsSection gym={gymData} />;
-            case 'payment-history': return <PaymentHistorySection gym={gymData} />;
+            case 'payment-history': return <PaymentHistorySection gym={gymData} onOpenSettlementModal={handleOpenSettlementModal} />;
             case 'payment-contact': return <PaymentContactInfoSection gym={gymData} />;
             case 'active-members': return <ActiveMembersSection gym={gymData} initialType="active" />;
             case 'expiring-soon': return <ActiveMembersSection gym={gymData} initialType="expiring" />;
@@ -233,6 +277,32 @@ const DashboardPage = () => {
                     {renderSection()}
                 </div>
             </main>
+
+            {/* Settlement Request Modal - Centered on entire dashboard */}
+            {showSettleModal && settlementModalData && (
+                <SettlementRequestModal
+                    gym={gymData}
+                    balance={settlementModalData.balance}
+                    onClose={handleCloseSettlementModal}
+                    onSuccess={() => {
+                        // Refresh payment history data if needed
+                        handleCloseSettlementModal();
+                    }}
+                />
+            )}
+
+            {/* Plan Form Modal - Centered on entire dashboard */}
+            {showPlanModal && planModalData && (
+                <PlanFormModal
+                    gym={gymData}
+                    planId={planModalData.planId}
+                    onClose={handleClosePlanModal}
+                    onSuccess={() => {
+                        // Refresh plans data if needed
+                        handleClosePlanModal();
+                    }}
+                />
+            )}
         </div>
     );
 };
