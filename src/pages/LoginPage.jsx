@@ -14,7 +14,7 @@ const LoginPage = () => {
         setError('');
 
         // Special Admin Login Check
-        if (formData.email === 'kk@gmail.com' && formData.password === '123456') {
+        if (formData.email === 'adminhood@gmail.com' && formData.password === 'Admin@123') {
             // You might want to get a real token from backend for admin if possible, 
             // but for now we redirect. 
             // Ideally the backend login should return role='Admin' and we redirect based on that.

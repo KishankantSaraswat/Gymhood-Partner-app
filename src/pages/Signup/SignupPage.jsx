@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Dumbbell, ArrowLeft, ArrowRight, Shield, ShieldCheck } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { useAlert } from '../../context/AlertContext';
 import Step1 from './Step1';
 import Step2 from './Step2';
 import Step3 from './Step3';
@@ -9,6 +10,7 @@ import Step5 from './Step5';
 import SuccessPage from './SuccessPage';
 
 const SignupPage = () => {
+    const { showAlert } = useAlert();
     const [currentStep, setCurrentStep] = useState(1);
     const [isSubmitted, setIsSubmitted] = useState(false);
     const [otpStep, setOtpStep] = useState(false);
@@ -53,12 +55,20 @@ const SignupPage = () => {
             const missingFields = requiredFields.filter(field => !formData[field]);
 
             if (missingFields.length > 0) {
-                alert(`Please fill all mandatory fields: ${missingFields.join(', ')}`);
+                showAlert({
+                    title: 'Incomplete Information',
+                    message: `Please fill in all mandatory fields before proceeding: ${missingFields.map(f => f.charAt(0).toUpperCase() + f.slice(1)).join(', ')}.`,
+                    type: 'warning'
+                });
                 return;
             }
 
             if (!formData.coordinates || formData.coordinates.length !== 2) {
-                alert("Please click 'Get Current Location' to capture your gym's location.");
+                showAlert({
+                    title: 'Location Required',
+                    message: "Please use 'Get Current Location' to help us map your gym's presence.",
+                    type: 'warning'
+                });
                 return;
             }
         }
@@ -66,11 +76,19 @@ const SignupPage = () => {
         // Validation for Step 5 (Documents)
         if (currentStep === 5) {
             if (!formData.documents?.panUrl) {
-                alert("PAN Card is mandatory. Please upload it to proceed.");
+                showAlert({
+                    title: 'Document Missing',
+                    message: "A PAN Card upload is mandatory to verify your business identity.",
+                    type: 'warning'
+                });
                 return;
             }
             if (!formData.documents?.idProofUrl) {
-                alert("Owner ID Proof is mandatory. Please upload it to proceed.");
+                showAlert({
+                    title: 'Identity Proof Required',
+                    message: "Please upload the Owner's ID proof to complete the verification process.",
+                    type: 'warning'
+                });
                 return;
             }
         }
@@ -110,7 +128,11 @@ const SignupPage = () => {
 
         } catch (error) {
             console.error("❌ Registration error caught:", error);
-            alert(`Error: ${error.message}`);
+            showAlert({
+                title: 'Registration Error',
+                message: error.message || "We encountered a problem while setting up your account. Please try again.",
+                type: 'error'
+            });
         } finally {
             setLoading(false);
         }
@@ -193,7 +215,11 @@ const SignupPage = () => {
 
         } catch (error) {
             console.error("❌ Completion error:", error);
-            alert(`Error: ${error.message}`);
+            showAlert({
+                title: 'Verification Failed',
+                message: error.message || "We could not complete your registration. Please check the OTP and try again.",
+                type: 'error'
+            });
         } finally {
             setLoading(false);
         }

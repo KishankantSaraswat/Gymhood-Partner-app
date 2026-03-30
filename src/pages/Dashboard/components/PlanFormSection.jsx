@@ -1,8 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import api from '../../../utils/api';
+import { useAlert } from '../../../context/AlertContext';
+
 import GymLoader from '../../../components/GymLoader';
 
 const PlanFormModal = ({ gym, planId, onClose, onSuccess }) => {
+    const { showAlert } = useAlert();
     const isEditMode = !!planId;
     const [loading, setLoading] = useState(isEditMode);
     const [submitting, setSubmitting] = useState(false);
@@ -14,7 +17,7 @@ const PlanFormModal = ({ gym, planId, onClose, onSuccess }) => {
         description: '',
         planType: 'monthly',
         duration: '1.5', // hours
-        features: []
+        features: ''
     });
 
     useEffect(() => {
@@ -34,7 +37,7 @@ const PlanFormModal = ({ gym, planId, onClose, onSuccess }) => {
                             description: plan.description || '',
                             planType: plan.planType,
                             duration: plan.duration.toString(),
-                            features: Array.isArray(plan.features) ? plan.features : (plan.features?.split(',') || [])
+                            features: Array.isArray(plan.features) ? plan.features.join(', ') : (plan.features || '')
                         });
                     } else {
                         console.error('Plan not found in gym plans');
@@ -59,8 +62,8 @@ const PlanFormModal = ({ gym, planId, onClose, onSuccess }) => {
     };
 
     const handleFeaturesChange = (e) => {
-        const featuresArray = e.target.value.split(',').map(f => f.trim());
-        setFormData(prev => ({ ...prev, features: featuresArray }));
+        const { value } = e.target;
+        setFormData(prev => ({ ...prev, features: value }));
     };
 
     const handleSubmit = async (e) => {
@@ -73,7 +76,7 @@ const PlanFormModal = ({ gym, planId, onClose, onSuccess }) => {
                 price: Number(formData.price),
                 discountPercent: Number(formData.discountPercent),
                 duration: Number(formData.duration),
-                features: formData.features.join(', ')
+                features: formData.features
             };
 
             let data;
@@ -89,7 +92,11 @@ const PlanFormModal = ({ gym, planId, onClose, onSuccess }) => {
             }
         } catch (err) {
             console.error('Error saving plan:', err);
-            alert(err.message);
+            showAlert({
+                title: 'Save Failed',
+                message: err.message || 'We could not save your plan. Please check the details and try again.',
+                type: 'error'
+            });
         } finally {
             setSubmitting(false);
         }
@@ -295,7 +302,7 @@ const PlanFormModal = ({ gym, planId, onClose, onSuccess }) => {
                                     <i className="fas fa-check-double text-slate-400 group-focus-within:text-indigo-500 transition-colors text-sm"></i>
                                 </div>
                                 <textarea
-                                    value={formData.features.join(', ')}
+                                    value={formData.features}
                                     onChange={handleFeaturesChange}
                                     className="block w-full pl-9 pr-3 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-700 font-bold placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all min-h-[100px] resize-y leading-relaxed text-sm"
                                     placeholder="e.g. Cardio Access, Free Weights, Sauna, Personal Locker, Weekend Access"

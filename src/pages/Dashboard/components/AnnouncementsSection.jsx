@@ -1,7 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import api from '../../../utils/api';
+import { useAlert } from '../../../context/AlertContext';
+
 
 const AnnouncementsSection = ({ gym }) => {
+    const { showAlert } = useAlert();
     const [announcements, setAnnouncements] = useState([]);
     const [loading, setLoading] = useState(true);
     const [newMessage, setNewMessage] = useState('');
@@ -55,7 +58,11 @@ const AnnouncementsSection = ({ gym }) => {
             }
         } catch (err) {
             console.error('Error creating announcement:', err);
-            alert(err.message);
+            showAlert({
+                title: 'Post Failed',
+                message: err.message || 'We could not publish your announcement. Please try again.',
+                type: 'error'
+            });
         } finally {
             setSending(false);
         }

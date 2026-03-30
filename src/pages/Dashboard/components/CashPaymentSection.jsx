@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import api from '../../../utils/api';
 import GymLoader from '../../../components/GymLoader';
+import { useAlert } from '../../../context/AlertContext';
 
 const CashPaymentSection = () => {
+    const { showAlert } = useAlert();
     const [pendingRequests, setPendingRequests] = useState([]);
     const [loading, setLoading] = useState(true);
     const [processing, setProcessing] = useState(null);
@@ -70,11 +72,19 @@ const CashPaymentSection = () => {
                 setPendingRequests(prev =>
                     prev.filter(req => req._id !== walletTransactionId)
                 );
-                alert('Cash payment approved successfully!');
+                showAlert({
+                    title: 'Payment Approved',
+                    message: 'The cash payment has been successfully recorded and approved.',
+                    type: 'success'
+                });
             }
         } catch (err) {
             console.error('[CashPaymentSection] Error approving cash payment:', err);
-            alert('Failed to approve cash payment: ' + (err.message || 'Unknown error'));
+            showAlert({
+                title: 'Approval Failed',
+                message: err.message || 'We could not approve the cash payment. Please try again.',
+                type: 'error'
+            });
         } finally {
             setProcessing(null);
         }
@@ -98,11 +108,19 @@ const CashPaymentSection = () => {
                 );
                 setShowRejectionModal(null);
                 setRejectionReason('');
-                alert('Cash payment rejected successfully!');
+                showAlert({
+                    title: 'Payment Rejected',
+                    message: 'The cash payment has been rejected and the user has been notified.',
+                    type: 'success'
+                });
             }
         } catch (err) {
             console.error('Error rejecting cash payment:', err);
-            alert('Failed to reject cash payment: ' + (err.message || 'Unknown error'));
+            showAlert({
+                title: 'Rejection Failed',
+                message: err.message || 'We could not reject the cash payment. Please try again.',
+                type: 'error'
+            });
         } finally {
             setProcessing(null);
         }
@@ -121,7 +139,7 @@ const CashPaymentSection = () => {
     if (loading) {
         return (
             <div className="flex items-center justify-center h-64">
-                <GymLoader text="Loading pending cash requests..." />
+                <GymLoader text="Loading enrollment requests..." />
             </div>
         );
     }
@@ -132,8 +150,8 @@ const CashPaymentSection = () => {
             <div className="bg-white rounded-xl sm:rounded-2xl p-4 sm:p-6 border border-slate-100">
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                     <div>
-                        <h2 className="text-xl sm:text-2xl font-bold text-slate-900">Pending Cash Requests</h2>
-                        <p className="text-sm sm:text-base text-slate-500 mt-1">Approve or reject cash payment requests from users</p>
+                        <h2 className="text-xl sm:text-2xl font-bold text-slate-900">Enrollment Requests</h2>
+                        <p className="text-sm sm:text-base text-slate-500 mt-1">Approve or reject enrollment requests from users</p>
                     </div>
                     <div className="bg-indigo-50 text-indigo-600 px-4 py-2 rounded-xl font-bold text-center sm:text-left self-start sm:self-auto">
                         {pendingRequests.length} Pending
@@ -148,7 +166,7 @@ const CashPaymentSection = () => {
                         <i className="fas fa-check-circle text-xl sm:text-2xl"></i>
                     </div>
                     <h3 className="text-lg sm:text-xl font-bold text-slate-900 mb-2">All caught up!</h3>
-                    <p className="text-sm sm:text-base text-slate-500">No pending cash payment requests at the moment.</p>
+                    <p className="text-sm sm:text-base text-slate-500">No pending enrollment requests at the moment.</p>
                 </div>
             ) : (
                 <div className="space-y-3 sm:space-y-4">
@@ -257,8 +275,8 @@ const CashPaymentSection = () => {
             {showRejectionModal && (
                 <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
                     <div className="bg-white rounded-2xl sm:rounded-3xl p-5 sm:p-6 max-w-md w-full animate-modal-in">
-                        <h3 className="text-lg sm:text-xl font-bold text-slate-900 mb-3 sm:mb-4">Reject Cash Payment</h3>
-                        <p className="text-sm sm:text-base text-slate-600 mb-3 sm:mb-4">Please provide a reason for rejecting this cash payment request.</p>
+                        <h3 className="text-lg sm:text-xl font-bold text-slate-900 mb-3 sm:mb-4">Reject Enrollment Request</h3>
+                        <p className="text-sm sm:text-base text-slate-600 mb-3 sm:mb-4">Please provide a reason for rejecting this enrollment request.</p>
 
                         <textarea
                             value={rejectionReason}

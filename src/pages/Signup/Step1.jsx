@@ -1,14 +1,20 @@
 import React, { useState } from 'react';
 import { MapPin, Loader2 } from 'lucide-react';
+import { useAlert } from '../../context/AlertContext';
 
 const Step1 = ({ data, updateData }) => {
+    const { showAlert } = useAlert();
     const [locLoading, setLocLoading] = useState(false);
     const [locError, setLocError] = useState(null);
     const [accuracy, setAccuracy] = useState(null);
 
     const handleGetLocation = () => {
         if (!navigator.geolocation) {
-            alert("Geolocation is not supported by your browser");
+            showAlert({
+                title: 'Browser Limitation',
+                message: 'Geolocation services are not supported by your current browser. Please try a modern one.',
+                type: 'warning'
+            });
             return;
         }
 
@@ -39,7 +45,11 @@ const Step1 = ({ data, updateData }) => {
             else if (err.code === 3) msg = "Location request timed out. Try again.";
 
             setLocError(msg);
-            alert(msg);
+            showAlert({
+                title: 'Location Services',
+                message: msg,
+                type: 'error'
+            });
         };
 
         // Try high accuracy first with a timeout

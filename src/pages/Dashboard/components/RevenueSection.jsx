@@ -135,35 +135,39 @@ const RevenueSection = ({ gym }) => {
                 });
             }
 
-            // Payment Method Chart
-            if (paymentChartRef.current && revenueData?.paymentMethodBreakdown) {
+            // Plan Revenue Chart
+            if (paymentChartRef.current && revenueData?.planBreakdown) {
                 const ctx = paymentChartRef.current.getContext('2d');
                 if (paymentChartInstance.current) paymentChartInstance.current.destroy();
 
-                const breakdown = paymentFilter === 'total'
-                    ? revenueData.paymentMethodBreakdown
-                    : (revenueData.paymentMethodBreakdown.byMonth?.[paymentFilter] || { cash: 0, upi: 0 });
+                const breakdown = revenueData.planBreakdown;
+                const planItems = Object.values(breakdown);
+                const labels = planItems.map(p => p.name);
+                const data = planItems.map(p => p.totalRevenue);
 
                 paymentChartInstance.current = new Chart(ctx, {
-                    type: 'pie',
+                    type: 'doughnut',
                     data: {
-                        labels: ['Cash', 'UPI'],
+                        labels,
                         datasets: [{
-                            data: [breakdown.cash, breakdown.upi],
-                            backgroundColor: ['#10b981', '#3b82f6'],
-                            borderWidth: 0
+                            data,
+                            backgroundColor: ['#10b981', '#3b82f6', '#8b5cf6', '#f59e0b', '#ef4444'],
+                            borderWidth: 0,
+                            cutout: '70%'
                         }]
                     },
                     options: {
                         responsive: true,
                         maintainAspectRatio: false,
                         plugins: {
-                            legend: { position: 'bottom' },
+                            legend: { position: 'bottom', labels: { usePointStyle: true, padding: 20, font: { weight: 'bold' } } },
                             tooltip: {
+                                backgroundColor: '#1e293b',
+                                padding: 12,
                                 callbacks: {
                                     label: (context) => {
                                         const value = context.parsed;
-                                        const total = [breakdown.cash, breakdown.upi].reduce((a, b) => a + b, 0);
+                                        const total = data.reduce((a, b) => a + b, 0);
                                         const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
                                         return ` ₹${value.toLocaleString()} (${percentage}%)`;
                                     }
@@ -193,8 +197,47 @@ const RevenueSection = ({ gym }) => {
     }
 
     return (
-        <div className="animate-fade-in">
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
+        <div className="animate-fade-in space-y-8">
+            {/* Growth Insights Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm flex items-center gap-5 transition-all hover:shadow-md group">
+                    <div className="w-14 h-14 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center text-xl group-hover:bg-indigo-600 group-hover:text-white transition-all">
+                        <i className="fas fa-crown"></i>
+                    </div>
+                    <div>
+                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Top Performing Plan</p>
+                        <p className="text-lg font-black text-slate-900 truncate max-w-[150px]">
+                            {Object.values(revenueData?.planBreakdown || {}).sort((a,b) => b.totalRevenue - a.totalRevenue)[0]?.name || 'N/A'}
+                        </p>
+                    </div>
+                </div>
+
+                <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm flex items-center gap-5 transition-all hover:shadow-md group">
+                    <div className="w-14 h-14 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center text-xl group-hover:bg-emerald-600 group-hover:text-white transition-all">
+                        <i className="fas fa-users"></i>
+                    </div>
+                    <div>
+                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Most Popular Plan</p>
+                        <p className="text-lg font-black text-slate-900 truncate max-w-[150px]">
+                            {Object.values(revenueData?.planBreakdown || {}).sort((a,b) => b.count - a.count)[0]?.name || 'N/A'}
+                        </p>
+                    </div>
+                </div>
+
+                <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm flex items-center gap-5 transition-all hover:shadow-md group">
+                    <div className="w-14 h-14 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center text-xl group-hover:bg-amber-600 group-hover:text-white transition-all">
+                        <i className="fas fa-chart-line"></i>
+                    </div>
+                    <div>
+                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Total Revenue</p>
+                        <p className="text-2xl font-black text-slate-900">
+                            ₹{Object.values(revenueData?.planBreakdown || {}).reduce((acc, p) => acc + p.totalRevenue, 0).toLocaleString()}
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                 <div className="lg:col-span-2 bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm">
                     <div className="flex items-center justify-between mb-8">
                         <div>
@@ -221,78 +264,48 @@ const RevenueSection = ({ gym }) => {
                         <canvas ref={revenueChartRef}></canvas>
                     </div>
 
-                    {/* Payment Method Breakdown */}
-                    {revenueData?.paymentMethodBreakdown && (
-                        <div className="mt-8">
-                            <div className="flex items-center justify-between mb-6">
+                    {/* Plan Revenue Breakdown */}
+                    {revenueData?.planBreakdown && (
+                        <div className="mt-8 pt-8 border-t border-slate-50">
+                            <div className="flex items-center justify-between mb-8">
                                 <div>
-                                    <h4 className="text-lg font-black text-slate-900 tracking-tight">Payment Method Breakdown</h4>
-                                    <p className="text-xs text-slate-500 font-medium">Cash vs UPI distribution</p>
-                                </div>
-                                <div className="relative">
-                                    <select
-                                        value={paymentFilter}
-                                        onChange={(e) => setPaymentFilter(e.target.value)}
-                                        className="bg-slate-50 border border-slate-100 rounded-xl px-4 py-2 text-sm font-bold text-slate-600 outline-none appearance-none cursor-pointer pr-10"
-                                    >
-                                        <option value="total">Overall Total</option>
-                                        {availableMonths.map(month => (
-                                            <option key={month} value={month}>{month}</option>
-                                        ))}
-                                    </select>
-                                    <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
-                                        <i className="fas fa-chevron-down text-xs"></i>
-                                    </div>
+                                    <h4 className="text-xl font-black text-slate-900 tracking-tight">Revenue by Plan</h4>
+                                    <p className="text-sm text-slate-500 font-medium">Which plans are driving your growth</p>
                                 </div>
                             </div>
 
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
-                                <div style={{ height: '250px' }}>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-10 items-center">
+                                <div style={{ height: '300px' }} className="relative">
                                     <canvas ref={paymentChartRef}></canvas>
+                                    <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none pb-12">
+                                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Total</p>
+                                        <p className="text-2xl font-black text-slate-900">₹{Object.values(revenueData.planBreakdown).reduce((acc, p) => acc + p.totalRevenue, 0).toLocaleString()}</p>
+                                    </div>
                                 </div>
-                                <div className="grid grid-cols-1 gap-4">
-                                    <div className="bg-gradient-to-br from-emerald-50 to-emerald-100 p-6 rounded-2xl border border-emerald-200">
-                                        <div className="flex items-center gap-3 mb-2">
-                                            <div className="w-10 h-10 rounded-xl bg-emerald-500 text-white flex items-center justify-center">
-                                                <i className="fas fa-money-bill-wave"></i>
+                                <div className="space-y-4">
+                                    {Object.values(revenueData.planBreakdown)
+                                        .sort((a, b) => b.totalRevenue - a.totalRevenue)
+                                        .slice(0, 3)
+                                        .map((plan, idx) => (
+                                            <div key={idx} className={`p-4 rounded-2xl border transition-all hover:scale-[1.02] ${
+                                                idx === 0 ? 'bg-indigo-50 border-indigo-100' : 
+                                                idx === 1 ? 'bg-emerald-50 border-emerald-100' : 'bg-slate-50 border-slate-100'
+                                            }`}>
+                                                <div className="flex items-center justify-between mb-1">
+                                                    <span className={`text-[10px] font-black uppercase tracking-wider ${
+                                                        idx === 0 ? 'text-indigo-600' : 
+                                                        idx === 1 ? 'text-emerald-600' : 'text-slate-500'
+                                                    }`}>
+                                                        {idx === 0 ? '👑 Top Performer' : idx === 1 ? '🔥 Rising Star' : 'Plan ' + (idx + 1)}
+                                                    </span>
+                                                    <span className="font-black text-slate-900">₹{plan.totalRevenue.toLocaleString()}</span>
+                                                </div>
+                                                <div className="flex items-center justify-between">
+                                                    <p className="font-bold text-slate-700 text-sm truncate pr-4">{plan.name}</p>
+                                                    <p className="text-xs font-bold text-slate-400">{plan.count} Enrollments</p>
+                                                </div>
                                             </div>
-                                            <span className="text-sm font-bold text-emerald-700 uppercase tracking-wider">Cash</span>
-                                        </div>
-                                        <p className="text-2xl font-black text-emerald-900">
-                                            ₹{(paymentFilter === 'total'
-                                                ? revenueData.paymentMethodBreakdown.cash
-                                                : (revenueData.paymentMethodBreakdown.byMonth?.[paymentFilter]?.cash || 0)
-                                            ).toLocaleString()}
-                                        </p>
-                                    </div>
-                                    <div className="bg-gradient-to-br from-blue-50 to-blue-100 p-6 rounded-2xl border border-blue-200">
-                                        <div className="flex items-center gap-3 mb-2">
-                                            <div className="w-10 h-10 rounded-xl bg-blue-500 text-white flex items-center justify-center">
-                                                <i className="fas fa-mobile-alt"></i>
-                                            </div>
-                                            <span className="text-sm font-bold text-blue-700 uppercase tracking-wider">UPI</span>
-                                        </div>
-                                        <p className="text-2xl font-black text-blue-900">
-                                            ₹{(paymentFilter === 'total'
-                                                ? revenueData.paymentMethodBreakdown.upi
-                                                : (revenueData.paymentMethodBreakdown.byMonth?.[paymentFilter]?.upi || 0)
-                                            ).toLocaleString()}
-                                        </p>
-                                    </div>
-                                    <div className="bg-gradient-to-br from-purple-50 to-purple-100 p-6 rounded-2xl border border-purple-200">
-                                        <div className="flex items-center gap-3 mb-2">
-                                            <div className="w-10 h-10 rounded-xl bg-purple-500 text-white flex items-center justify-center">
-                                                <i className="fas fa-chart-line"></i>
-                                            </div>
-                                            <span className="text-sm font-bold text-purple-700 uppercase tracking-wider">Total</span>
-                                        </div>
-                                        <p className="text-2xl font-black text-purple-900">
-                                            ₹{(paymentFilter === 'total'
-                                                ? revenueData.paymentMethodBreakdown.total
-                                                : (revenueData.paymentMethodBreakdown.byMonth?.[paymentFilter]?.total || 0)
-                                            ).toLocaleString()}
-                                        </p>
-                                    </div>
+                                        ))}
                                 </div>
                             </div>
                         </div>
@@ -388,17 +401,17 @@ const RevenueSection = ({ gym }) => {
 
             <div className="bg-white rounded-[2.5rem] border border-slate-100 shadow-sm overflow-hidden">
                 <div className="p-8 border-b border-slate-50 flex justify-between items-center">
-                    <h3 className="text-xl font-black text-slate-900 tracking-tight">Recent Activity</h3>
-                    <button className="text-indigo-600 font-black text-xs uppercase tracking-widest hover:underline">View All</button>
+                    <h3 className="text-xl font-black text-slate-900 tracking-tight">Recent Enrollments</h3>
+                    <button className="text-indigo-600 font-black text-xs uppercase tracking-widest hover:underline text-sm">View Enrollment History</button>
                 </div>
                 <div className="overflow-x-auto">
                     <table className="w-full text-left">
                         <thead>
                             <tr className="bg-slate-50/50 text-slate-400 text-[10px] uppercase font-black tracking-widest">
-                                <th className="px-8 py-5">Activity</th>
-                                <th className="px-8 py-5">User</th>
-                                <th className="px-8 py-5">Plan</th>
-                                <th className="px-8 py-5">Purchase Date</th>
+                                <th className="px-8 py-5">Enrollment Type</th>
+                                <th className="px-8 py-5">Member</th>
+                                <th className="px-8 py-5">Plan Detail</th>
+                                <th className="px-8 py-5">Enrollment Date</th>
                                 <th className="px-8 py-5">Status</th>
                                 <th className="px-8 py-5">Expiry Date</th>
                             </tr>
@@ -421,9 +434,9 @@ const RevenueSection = ({ gym }) => {
                                         <td className="px-8 py-5">
                                             <div className="flex items-center gap-3">
                                                 <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-500 flex items-center justify-center">
-                                                    <i className="fas fa-shopping-cart text-xs"></i>
+                                                    <i className="fas fa-id-badge text-xs"></i>
                                                 </div>
-                                                <span className="font-bold text-slate-900">Plan Purchase</span>
+                                                <span className="font-bold text-slate-900">New Enrollment</span>
                                             </div>
                                         </td>
                                         <td className="px-8 py-5">

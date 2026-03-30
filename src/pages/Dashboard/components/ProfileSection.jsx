@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import api from '../../../utils/api';
+import { useAlert } from '../../../context/AlertContext';
 
 const GymProfile = ({ gym }) => {
+    const { showAlert } = useAlert();
     const [gymData, setGymData] = useState(gym || {});
     const [loading, setLoading] = useState(!gym);
     const [saving, setSaving] = useState(false);
@@ -90,11 +92,19 @@ const GymProfile = ({ gym }) => {
             const response = await api.put(`/gymdb/gym/${gymData._id}`, filteredData);
             if (response.success) {
                 setGymData(response.gym);
-                alert('Profile updated successfully!');
+                showAlert({
+                    title: 'Profile Updated',
+                    message: 'Your gym profile has been successfully updated.',
+                    type: 'success'
+                });
             }
         } catch (err) {
             console.error('Save failed:', err);
-            alert(err.message || 'Update failed');
+            showAlert({
+                title: 'Update Failed',
+                message: err.message || 'We could not save your changes. Please try again.',
+                type: 'error'
+            });
         } finally {
             setSaving(false);
         }
@@ -173,7 +183,11 @@ const GymProfile = ({ gym }) => {
             }
         } catch (err) {
             console.error('Photo upload failed:', err);
-            alert('Photo upload failed. Please check if file server is running.');
+            showAlert({
+                title: 'Upload Failed',
+                message: 'Photo upload failed. Please check your connection or file size.',
+                type: 'error'
+            });
         } finally {
             setUploadingPhotos(prev => ({ ...prev, [field]: false }));
         }
@@ -195,12 +209,20 @@ const GymProfile = ({ gym }) => {
                 const response = await api.post(`/gymdb/gym/${gymData._id}/media`, newMedia);
                 if (response.success) {
                     setGymData(prev => ({ ...prev, media: response.media }));
-                    alert('Banner photo updated successfully!');
+                    showAlert({
+                        title: 'Banner Updated',
+                        message: 'Your new banner photo has been successfully set.',
+                        type: 'success'
+                    });
                 }
             }
         } catch (err) {
             console.error('Banner upload failed:', err);
-            alert('Banner upload failed. Please try again.');
+            showAlert({
+                title: 'Upload Failed',
+                message: 'We could not upload the banner photo. Please try again.',
+                type: 'error'
+            });
         } finally {
             setUploadingBanner(false);
         }
@@ -223,12 +245,20 @@ const GymProfile = ({ gym }) => {
                 const response = await api.post(`/gymdb/gym/${gymData._id}/media`, newMedia);
                 if (response.success) {
                     setGymData(prev => ({ ...prev, media: response.media }));
-                    alert('Logo updated successfully!');
+                    showAlert({
+                        title: 'Logo Updated',
+                        message: 'Your new gym logo has been updated successfully.',
+                        type: 'success'
+                    });
                 }
             }
         } catch (err) {
             console.error('Logo upload failed:', err);
-            alert('Logo upload failed. Please try again.');
+            showAlert({
+                title: 'Upload Failed',
+                message: 'We could not upload your logo. Please try again.',
+                type: 'error'
+            });
         } finally {
             setUploadingLogo(false);
         }

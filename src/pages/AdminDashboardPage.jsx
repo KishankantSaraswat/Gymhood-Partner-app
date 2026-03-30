@@ -3,12 +3,16 @@ import { BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Toolti
 import { Shield, LayoutDashboard, Dumbbell, Coins, Megaphone, Search, Filter, Eye, TrendingUp, Users, DollarSign, AlertCircle, ArrowUpRight, ArrowDownRight, Zap, Award, Calendar, Bell, Settings, LogOut, Menu, X, ChevronRight, Activity, Loader, FileText, Trash2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import api from '../utils/api';
+import logo from '../assets/logo.png';
+import { useAlert } from '../context/AlertContext';
 
 const AdminDashboard = () => {
     const navigate = useNavigate();
+    const { showAlert } = useAlert();
     const [activeSection, setActiveSection] = useState('overview');
     const [animateStats, setAnimateStats] = useState(false);
     const [sidebarOpen, setSidebarOpen] = useState(false);
+    const [isCollapsed, setIsCollapsed] = useState(false);
     const [loading, setLoading] = useState(true);
 
     const [stats, setStats] = useState({
@@ -31,6 +35,9 @@ const AdminDashboard = () => {
     const [isModalLoading, setIsModalLoading] = useState(false);
     const [updatingCommission, setUpdatingCommission] = useState(false);
     const [tempCommission, setTempCommission] = useState(0);
+    const [deleteModal, setDeleteModal] = useState({ isOpen: false, gymId: null, gymName: '' });
+    const [deletePassword, setDeletePassword] = useState('');
+    const [isDeleting, setIsDeleting] = useState(false);
 
     useEffect(() => {
         fetchData();
@@ -65,15 +72,29 @@ const AdminDashboard = () => {
                 // Also refresh stats to update pending count
                 const statsRes = await api.get('/admin/stats');
                 if (statsRes.success) setStats(statsRes.stats);
+                
+                showAlert({
+                    title: data.isVerified ? 'Gym Verified' : 'Verification Revoked',
+                    message: `Strategic partnership status for this gym has been ${data.isVerified ? 'activated' : 'deactivated'}.`,
+                    type: 'success'
+                });
             }
         } catch (err) {
-            alert('Verification failed');
+            showAlert({
+                title: 'Operation Failed',
+                message: 'We encountered an error while updating the verification status. Please try again.',
+                type: 'error'
+            });
         }
     };
 
     const handleSendAnnouncement = async () => {
         if (!newAnnouncement.title || !newAnnouncement.message) {
-            alert('Please fill in title and message');
+            showAlert({
+                title: 'Incomplete Announcement',
+                message: 'Please provide both a title and a message to reach your audience.',
+                type: 'warning'
+            });
             return;
         }
         try {
@@ -96,14 +117,22 @@ const AdminDashboard = () => {
                 targetGyms: finalTargetGyms
             });
             if (data.success) {
-                alert('Announcement sent!');
-                setNewAnnouncement({ title: '', message: '', target: 'ALL', targetGyms: [] });
+                showAlert({
+                    title: 'Broadcast Successful',
+                    message: 'Your announcement has been dispatched and is now live.',
+                    type: 'success'
+                });
+                setNewAnnouncement({ title: '', message: '', target: 'ALL_USERS', targetGyms: [] });
                 // Refresh announcements
                 const annRes = await api.get('/admin/announcements/user');
                 if (annRes.success) setAnnouncements(annRes.announcements);
             }
         } catch (err) {
-            alert('Failed to send announcement');
+            showAlert({
+                title: 'Dispatch Failed',
+                message: 'We could not send your announcement at this time. Please check your connection.',
+                type: 'error'
+            });
         }
     };
 
@@ -112,12 +141,20 @@ const AdminDashboard = () => {
         try {
             const data = await api.delete(`/admin/announcements/${id}`);
             if (data.success) {
-                alert('Announcement deleted');
+                showAlert({
+                    title: 'Announcement Removed',
+                    message: 'The selected announcement has been permanently deleted.',
+                    type: 'success'
+                });
                 const annRes = await api.get('/admin/announcements/user');
                 if (annRes.success) setAnnouncements(annRes.announcements);
             }
         } catch (err) {
-            alert('Failed to delete announcement');
+            showAlert({
+                title: 'Deletion Failed',
+                message: 'Unable to remove the announcement. Please try again later.',
+                type: 'error'
+            });
         }
     };
 
@@ -135,7 +172,11 @@ const AdminDashboard = () => {
                 setTempCommission(data.gym.commissionRate || 0);
             }
         } catch (err) {
-            alert('Failed to fetch gym details');
+            showAlert({
+                title: 'Data Retrieval Error',
+                message: 'We could not fetch the details for this gym partner.',
+                type: 'error'
+            });
         } finally {
             setIsModalLoading(false);
         }
@@ -146,7 +187,11 @@ const AdminDashboard = () => {
         const targetRate = newRate !== undefined ? newRate : tempCommission;
 
         if (targetRate < 0 || targetRate > 100) {
-            alert('Commission rate must be between 0 and 100');
+            showAlert({
+                title: 'Invalid Rate',
+                message: 'Please enter a commission percentage between 0 and 100.',
+                type: 'warning'
+            });
             return;
         }
         setUpdatingCommission(true);
@@ -155,7 +200,11 @@ const AdminDashboard = () => {
                 commissionRate: targetRate
             });
             if (data.success) {
-                alert('Commission rate updated successfully');
+                showAlert({
+                    title: 'Structure Updated',
+                    message: 'The new commission rate has been successfully applied to this partner.',
+                    type: 'success'
+                });
                 // Update local state if it matches selectedGym
                 if (selectedGym && selectedGym.gym._id === targetGymId) {
                     setSelectedGym(prev => ({
@@ -169,7 +218,11 @@ const AdminDashboard = () => {
                 ));
             }
         } catch (err) {
-            alert('Failed to update commission rate');
+            showAlert({
+                title: 'Update Failed',
+                message: 'Failed to synchronize the new commission rate with the server.',
+                type: 'error'
+            });
         } finally {
             setUpdatingCommission(false);
         }
@@ -188,7 +241,11 @@ const AdminDashboard = () => {
                 transactionId
             });
             if (data.success) {
-                alert(`Settlement ${status.toLowerCase()} successfully`);
+                showAlert({
+                    title: 'Settlement Processed',
+                    message: `The settlement request was marked as ${status.toLowerCase()} correctly.`,
+                    type: 'success'
+                });
                 // Refresh data
                 const settleRes = await api.get('/payment/settlement-requests');
                 if (settleRes.success) setSettlementRequests(settleRes.data);
@@ -198,7 +255,54 @@ const AdminDashboard = () => {
                 if (gymsRes.success) setGymsList(gymsRes.gyms);
             }
         } catch (err) {
-            alert('Action failed: ' + err.message);
+            showAlert({
+                title: 'Processing Error',
+                message: 'We encountered an issue while updating the settlement status: ' + err.message,
+                type: 'error'
+            });
+        }
+    };
+
+    const handleDeleteGym = async () => {
+        if (!deletePassword) {
+            showAlert({
+                title: 'Security Required',
+                message: 'Authentication is required to perform this destructive action.',
+                type: 'warning'
+            });
+            return;
+        }
+
+        setIsDeleting(true);
+        try {
+            const data = await api.delete(`/admin/gym/${deleteModal.gymId}`, {
+                password: deletePassword
+            });
+
+            if (data.success) {
+                showAlert({
+                    title: 'Gym Permanently Deleted',
+                    message: 'The gym partner and all associated data have been purged from the system.',
+                    type: 'success'
+                });
+                setDeleteModal({ isOpen: false, gymId: null, gymName: '' });
+                setDeletePassword('');
+                // Refresh the list and stats
+                const [gymsRes, statsRes] = await Promise.all([
+                    api.get('/admin/gyms/admin-all'),
+                    api.get('/admin/stats')
+                ]);
+                if (gymsRes.success) setGymsList(gymsRes.gyms);
+                if (statsRes.success) setStats(statsRes.stats);
+            }
+        } catch (err) {
+            showAlert({
+                title: 'Access Denied',
+                message: err.response?.data?.message || err.message || 'Incorrect password or insufficient permissions.',
+                type: 'error'
+            });
+        } finally {
+            setIsDeleting(false);
         }
     };
 
@@ -233,46 +337,73 @@ const AdminDashboard = () => {
             </button>
 
             {/* Sidebar */}
-            <aside className={`fixed md:relative w-72 bg-white border-r border-slate-200 flex flex-col shadow-2xl z-40 transition-transform duration-300 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}`}>
-                <div className="h-20 flex items-center px-6 border-b border-slate-200 bg-gradient-to-r from-violet-600 to-indigo-600">
-                    <div className="w-12 h-12 rounded-2xl bg-white bg-opacity-20 flex items-center justify-center text-white mr-4 shadow-lg">
-                        <Shield className="w-6 h-6" />
+            <aside className={`fixed md:relative border-r border-slate-200 flex flex-col shadow-2xl z-40 transition-all duration-300 ease-in-out ${sidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
+                } ${isCollapsed ? 'w-24' : 'w-72'} bg-white`}>
+                <div className={`h-20 flex items-center border-b border-slate-200 bg-white shrink-0 relative transition-all duration-300 ${isCollapsed ? 'justify-center px-2' : 'px-6'}`}>
+                    <div className={`flex items-center transition-all duration-300 ${isCollapsed ? 'scale-125' : 'scale-100'}`}>
+                        <img src={logo} alt="Gymshood Admin" className="w-11 h-11 object-contain mr-4" />
+                        {!isCollapsed && (
+                            <div className="ml-4 transition-all duration-300 opacity-100 whitespace-nowrap">
+                                <span className="font-black text-xl text-slate-900">Gymshood</span>
+                                <p className="text-xs text-indigo-600 font-bold uppercase tracking-wider">Admin Panel</p>
+                            </div>
+                        )}
                     </div>
-                    <div>
-                        <span className="font-black text-xl text-white">Gymshood</span>
-                        <p className="text-xs text-white text-opacity-80 font-medium">Admin Panel</p>
-                    </div>
+                    {/* Collapse Toggle Button - Desktop Only */}
+                    <button
+                        onClick={() => setIsCollapsed(!isCollapsed)}
+                        className="hidden md:flex absolute -right-3 top-1/2 -translate-y-1/2 w-6 h-6 bg-white border border-slate-200 rounded-full items-center justify-center shadow-md text-slate-400 hover:text-indigo-600 z-50 transition-all"
+                    >
+                        {isCollapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronRight className="w-4 h-4 transform rotate-180" />}
+                    </button>
                 </div>
 
-                <nav className="flex-1 overflow-y-auto py-8 px-4 space-y-2">
+                <nav className={`flex-1 overflow-y-auto py-8 space-y-2 transition-all duration-300 ${isCollapsed ? 'px-3' : 'px-4'}`}>
                     {[
                         { icon: LayoutDashboard, label: 'Dashboard', section: 'overview' },
                         { icon: Dumbbell, label: 'Gym Partners', section: 'gyms' },
-                        { icon: Coins, label: 'Settlements', section: 'settlements' },
-                        { icon: Settings, label: 'Commission', section: 'commission' },
+                        // { icon: Coins, label: 'Settlements', section: 'settlements' },
+                        // { icon: Settings, label: 'Commission', section: 'commission' },
                         { icon: Megaphone, label: 'Announcements', section: 'announcements' }
                     ].map(({ icon: Icon, label, section }) => (
                         <button key={section} onClick={() => { setActiveSection(section); setSidebarOpen(false); }}
-                            className={`w-full flex items-center gap-4 px-5 py-3.5 rounded-2xl font-semibold transition-all ${activeSection === section ? 'bg-gradient-to-r from-violet-600 to-indigo-600 text-white shadow-lg' : 'text-slate-600 hover:bg-slate-50'
-                                }`}>
-                            <Icon className="w-5 h-5" />
-                            <span>{label}</span>
-                            {activeSection === section && <ChevronRight className="w-4 h-4 ml-auto" />}
+                            className={`w-full flex items-center transition-all duration-300 ${isCollapsed ? 'justify-center px-0 py-4' : 'px-5 py-3.5 gap-4'
+                                } rounded-2xl font-semibold ${activeSection === section ? 'bg-gradient-to-r from-violet-600 to-indigo-600 text-white shadow-lg' : 'text-slate-600 hover:bg-slate-50'
+                                } group relative`}
+                            title={isCollapsed ? label : ''}
+                        >
+                            <Icon className={`w-5 h-5 transition-transform duration-300 ${isCollapsed ? 'group-hover:scale-110' : ''}`} />
+                            {!isCollapsed && <span className="whitespace-nowrap transition-all duration-300 opacity-100">{label}</span>}
+                            {activeSection === section && !isCollapsed && <ChevronRight className="w-4 h-4 ml-auto" />}
+                            
+                            {/* Hover Tooltip for Collapsed Mode */}
+                            {isCollapsed && (
+                                <div className="absolute left-full ml-4 px-3 py-2 bg-slate-900 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 pointer-events-none transition-all whitespace-nowrap z-50">
+                                    {label}
+                                </div>
+                            )}
                         </button>
                     ))}
                 </nav>
 
-                <div className="p-4 border-t border-slate-200 space-y-2">
-                    <button onClick={handleLogout} className="w-full flex items-center gap-4 px-5 py-3.5 rounded-2xl font-semibold text-red-600 hover:bg-red-50 transition-all">
+                <div className={`p-4 border-t border-slate-200 transition-all duration-300 ${isCollapsed ? 'flex flex-col items-center gap-4' : 'space-y-4'}`}>
+                    <button onClick={handleLogout} className={`w-full flex items-center transition-all duration-300 ${isCollapsed ? 'justify-center p-4' : 'px-5 py-3.5 gap-4'} rounded-2xl font-semibold text-red-600 hover:bg-red-50 group relative`}>
                         <LogOut className="w-5 h-5" />
-                        <span>Logout</span>
+                        {!isCollapsed && <span>Logout</span>}
+                        {isCollapsed && (
+                            <div className="absolute left-full ml-4 px-3 py-2 bg-red-600 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 pointer-events-none transition-all whitespace-nowrap z-50">
+                                Logout
+                            </div>
+                        )}
                     </button>
-                    <div className="flex items-center gap-3 p-3 rounded-2xl bg-gradient-to-r from-slate-50 to-slate-100">
-                        <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-violet-600 to-indigo-600 text-white flex items-center justify-center font-black text-lg shadow-lg">A</div>
-                        <div className="flex-1 overflow-hidden">
-                            <p className="text-sm font-bold text-slate-900">Super Admin</p>
-                            <p className="text-xs text-slate-500 truncate">admin@gymshood.com</p>
-                        </div>
+                    <div className={`flex items-center transition-all duration-300 ${isCollapsed ? 'justify-center' : 'gap-3 p-3 rounded-2xl bg-gradient-to-r from-slate-50 to-slate-100 overflow-hidden'}`}>
+                        <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-violet-600 to-indigo-600 text-white flex items-center justify-center font-black text-lg shadow-lg shrink-0">A</div>
+                        {!isCollapsed && (
+                            <div className="transition-all duration-300 opacity-100 overflow-hidden">
+                                <p className="text-sm font-bold text-slate-900 whitespace-nowrap">Super Admin</p>
+                                <p className="text-xs text-slate-500 truncate">admin@gymshood.com</p>
+                            </div>
+                        )}
                     </div>
                 </div>
             </aside>
@@ -409,7 +540,6 @@ const AdminDashboard = () => {
                                             <th className="p-5 text-left font-bold">Location</th>
                                             <th className="p-5 text-left font-bold">Rating</th>
                                             <th className="p-5 text-left font-bold">Revenue</th>
-                                            <th className="p-5 text-left font-bold">Total Balance</th>
                                             <th className="p-5 text-left font-bold">Status</th>
                                             <th className="p-5 text-right font-bold">Actions</th>
                                         </tr>
@@ -439,24 +569,31 @@ const AdminDashboard = () => {
                                                     </span>
                                                 </td>
                                                 <td className="p-5">
-                                                    <span className="font-bold text-emerald-600">
-                                                        {`₹${Number(gym.walletBalance || 0).toLocaleString('en-IN')}`}
-                                                    </span>
-                                                </td>
-                                                <td className="p-5">
                                                     <span className={`px-4 py-1.5 rounded-full text-xs font-bold ${gym.isVerified ? 'bg-emerald-100 text-emerald-700' : 'bg-orange-100 text-orange-700'}`}>{gym.isVerified ? 'Verified' : 'Pending'}</span>
                                                 </td>
                                                 <td className="p-5 text-right">
-                                                    <button
-                                                        onClick={(e) => {
-                                                            e.stopPropagation();
-                                                            handleVerifyToggle(gym._id);
-                                                        }}
-                                                        className={`px-5 py-2 rounded-xl text-sm font-bold shadow-md transition-all ${gym.isVerified ? 'bg-slate-100 text-slate-600 hover:bg-slate-200' : 'bg-gradient-to-r from-emerald-500 to-teal-600 text-white hover:shadow-lg'
-                                                            }`}
-                                                    >
-                                                        {gym.isVerified ? 'Revoke' : 'Verify Now'}
-                                                    </button>
+                                                    <div className="flex justify-end items-center gap-2">
+                                                        <button
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                handleVerifyToggle(gym._id);
+                                                            }}
+                                                            className={`px-5 py-2 rounded-xl text-sm font-bold shadow-md transition-all ${gym.isVerified ? 'bg-slate-100 text-slate-600 hover:bg-slate-200' : 'bg-gradient-to-r from-emerald-500 to-teal-600 text-white hover:shadow-lg'
+                                                                }`}
+                                                        >
+                                                            {gym.isVerified ? 'Revoke' : 'Verify Now'}
+                                                        </button>
+                                                        <button
+                                                            onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    setDeleteModal({ isOpen: true, gymId: gym._id, gymName: gym.name });
+                                                            }}
+                                                            className="p-2.5 bg-rose-50 text-rose-600 rounded-xl hover:bg-rose-100 transition-all border border-rose-100 shadow-sm"
+                                                            title="Delete Gym Permanently"
+                                                        >
+                                                            <Trash2 className="w-4 h-4" />
+                                                        </button>
+                                                    </div>
                                                 </td>
                                             </tr>
                                         ))}
@@ -950,12 +1087,6 @@ const AdminDashboard = () => {
                                     <div className="bg-gradient-to-br from-emerald-500 to-teal-700 p-6 rounded-3xl shadow-lg text-white">
                                         <p className="text-white/80 text-sm font-bold uppercase mb-2">Lifetime Revenue</p>
                                         <p className="text-4xl font-black mb-4">₹{selectedGym.totalRevenue.toLocaleString('en-IN')}</p>
-                                        <div className="pt-4 border-t border-white/20">
-                                            <div className="flex justify-between items-center text-sm font-bold">
-                                                <span>Current Wallet</span>
-                                                <span className="bg-white/20 px-3 py-1 rounded-full">₹{selectedGym.gym.owner?.walletBalance?.toLocaleString('en-IN')}</span>
-                                            </div>
-                                        </div>
                                     </div>
 
 
@@ -1054,6 +1185,63 @@ const AdminDashboard = () => {
                                     )}
                                 </div>
                             </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Password Verification Modal for Deletion */}
+            {deleteModal.isOpen && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6">
+                    <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={() => !isDeleting && setDeleteModal({ ...deleteModal, isOpen: false })}></div>
+                    <div className="bg-white w-full max-w-md rounded-3xl shadow-2xl overflow-hidden relative p-8 animate-in fade-in zoom-in duration-300">
+                        <div className="flex flex-col items-center text-center">
+                            <div className="w-20 h-20 rounded-full bg-rose-100 flex items-center justify-center mb-6">
+                                <Trash2 className="w-10 h-10 text-rose-600" />
+                            </div>
+                            <h2 className="text-2xl font-black text-slate-900 mb-2">Delete Gym?</h2>
+                            <p className="text-slate-500 font-medium mb-6">
+                                You are about to permanently delete <span className="font-bold text-slate-900">"{deleteModal.gymName}"</span>. This action cannot be undone.
+                            </p>
+
+                            <form onSubmit={(e) => { e.preventDefault(); handleDeleteGym(); }} className="w-full space-y-4">
+                                <div className="text-left">
+                                    <label className="block text-xs font-black text-slate-500 uppercase tracking-wider mb-2 ml-1">Admin Password</label>
+                                    <div className="relative">
+                                        <Shield className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+                                        <input
+                                            type="password"
+                                            value={deletePassword}
+                                            onChange={(e) => setDeletePassword(e.target.value)}
+                                            placeholder="Enter your password..."
+                                            className="w-full pl-12 pr-4 py-4 bg-slate-50 border border-slate-200 rounded-2xl focus:border-rose-500 outline-none font-bold text-slate-700 transition-all"
+                                            autoFocus
+                                            autoComplete="off"
+                                        />
+                                    </div>
+                                </div>
+
+                                <div className="flex gap-3 pt-4">
+                                    <button
+                                        type="button"
+                                        disabled={isDeleting}
+                                        onClick={() => {
+                                            setDeleteModal({ ...deleteModal, isOpen: false });
+                                            setDeletePassword('');
+                                        }}
+                                        className="flex-1 py-4 px-6 rounded-2xl font-bold text-slate-600 hover:bg-slate-50 transition-all border border-slate-200"
+                                    >
+                                        Cancel
+                                    </button>
+                                    <button
+                                        type="submit"
+                                        disabled={isDeleting}
+                                        className="flex-1 py-4 px-6 rounded-2xl font-black text-white bg-gradient-to-r from-rose-600 to-red-600 hover:shadow-xl hover:shadow-rose-200 transition-all flex items-center justify-center gap-2"
+                                    >
+                                        {isDeleting ? <Loader className="w-5 h-5 animate-spin" /> : 'Confirm Deletion'}
+                                    </button>
+                                </div>
+                            </form>
                         </div>
                     </div>
                 </div>

@@ -72,15 +72,6 @@ const DashboardPage = () => {
         fetchDashboardData();
     }, [navigate]);
 
-    const handleOpenSettlementModal = (balance) => {
-        setSettlementModalData({ balance });
-        setShowSettleModal(true);
-    };
-
-    const handleCloseSettlementModal = () => {
-        setShowSettleModal(false);
-        setSettlementModalData(null);
-    };
 
     const handleOpenPlanModal = (planId = null) => {
         setPlanModalData({ planId });
@@ -97,9 +88,9 @@ const DashboardPage = () => {
         'profile': 'My Gym Profile',
         'revenue': 'Revenue Analytics',
         'plans': 'Membership Plans',
-        'cash-payments': 'Pending Cash Requests',
+        'cash-payments': 'Enrollment Requests',
         'announcements': 'Announcements',
-        'payment-history': 'Payment History',
+        'payment-history': 'Transaction History',
         'payment-contact': 'Payment Contact Info',
         'active-members': 'Active Members',
         'expiring-soon': 'Expiring Soon'
@@ -151,7 +142,7 @@ const DashboardPage = () => {
                 />;
             case 'cash-payments': return <CashPaymentSection />;
             case 'announcements': return <AnnouncementsSection gym={gymData} />;
-            case 'payment-history': return <PaymentHistorySection gym={gymData} onOpenSettlementModal={handleOpenSettlementModal} />;
+            case 'payment-history': return <PaymentHistorySection gym={gymData} />;
             case 'payment-contact': return <PaymentContactInfoSection gym={gymData} />;
             case 'active-members': return <ActiveMembersSection gym={gymData} initialType="active" />;
             case 'expiring-soon': return <ActiveMembersSection gym={gymData} initialType="expiring" />;
@@ -194,9 +185,9 @@ const DashboardPage = () => {
                     {/* Right: Icons and Profile Menu */}
                     <div className="flex items-center gap-3 sm:gap-5">
                         {/* Notification Button */}
-                        <button className="hidden md:flex w-10 h-10 sm:w-11 sm:h-11 rounded-full bg-slate-50 items-center justify-center text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 transition-all border border-slate-100 active:scale-95">
+                        {/* <button className="hidden md:flex w-10 h-10 sm:w-11 sm:h-11 rounded-full bg-slate-50 items-center justify-center text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 transition-all border border-slate-100 active:scale-95">
                             <i className="fas fa-bell text-sm sm:text-base"></i>
-                        </button>
+                        </button> */}
 
                         {/* Profile Button and Dropdown */}
                         <div className="relative" ref={profileMenuRef}>
@@ -227,11 +218,7 @@ const DashboardPage = () => {
                                         </button>
 
                                         {[
-                                            { label: 'Payment Contact Info', icon: 'fas fa-id-card', section: 'payment-contact' },
-                                            { label: 'Payment History', icon: 'fas fa-history', section: 'payment-history' },
-                                            { label: 'Help & Support', icon: 'fas fa-headset' },
-                                            { label: 'Privacy Policy', icon: 'fas fa-shield-alt' },
-                                            { label: 'Terms and Conditions', icon: 'fas fa-file-contract' }
+                                            { label: 'Transaction History', icon: 'fas fa-history', section: 'payment-history' }
                                         ].map((item, idx) => (
                                             <button
                                                 key={idx}
@@ -278,18 +265,6 @@ const DashboardPage = () => {
                 </div>
             </main>
 
-            {/* Settlement Request Modal - Centered on entire dashboard */}
-            {showSettleModal && settlementModalData && (
-                <SettlementRequestModal
-                    gym={gymData}
-                    balance={settlementModalData.balance}
-                    onClose={handleCloseSettlementModal}
-                    onSuccess={() => {
-                        // Refresh payment history data if needed
-                        handleCloseSettlementModal();
-                    }}
-                />
-            )}
 
             {/* Plan Form Modal - Centered on entire dashboard */}
             {showPlanModal && planModalData && (

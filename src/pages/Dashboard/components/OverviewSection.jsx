@@ -2,8 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { QRCodeCanvas } from 'qrcode.react';
 import api from '../../../utils/api';
 import ActiveMembersModal from './ActiveMembersModal';
+import { useAlert } from '../../../context/AlertContext';
 
 const OverviewSection = ({ gym, onSectionChange }) => {
+    const { showAlert } = useAlert();
     const [showQR, setShowQR] = useState(false);
     const [dashboardStats, setDashboardStats] = useState({
         activeMembers: 0,
@@ -114,7 +116,11 @@ const OverviewSection = ({ gym, onSectionChange }) => {
             }
         } catch (error) {
             console.error("Approval failed", error);
-            alert("Approval failed: " + error.message);
+            showAlert({
+                title: 'Approval Failed',
+                message: error.message || 'We could not process this approval. Please try again later.',
+                type: 'error'
+            });
         }
     };
 
@@ -129,7 +135,11 @@ const OverviewSection = ({ gym, onSectionChange }) => {
             }
         } catch (error) {
             console.error("Rejection failed", error);
-            alert("Rejection failed: " + error.message);
+            showAlert({
+                title: 'Rejection Failed',
+                message: error.message || 'We could not process this rejection. Please try again later.',
+                type: 'error'
+            });
         }
     };
 

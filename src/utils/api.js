@@ -78,16 +78,17 @@ const api = {
         if (!response.ok) throw new Error(data.message || 'Something went wrong');
         return data;
     },
-    delete: async (endpoint) => {
+    delete: async (endpoint, body) => {
         const token = localStorage.getItem('gymshood_token');
-        console.log(`🌐 API DELETE Request: ${BASE_URL}${endpoint}`);
+        console.log(`🌐 API DELETE Request: ${BASE_URL}${endpoint}`, body);
         const response = await fetch(`${BASE_URL}${endpoint}`, {
             method: 'DELETE',
             headers: {
                 'Authorization': `Bearer ${token}`,
                 'Content-Type': 'application/json',
                 'ngrok-skip-browser-warning': 'true'
-            }
+            },
+            body: body ? JSON.stringify(body) : undefined
         });
 
         const contentType = response.headers.get("content-type");

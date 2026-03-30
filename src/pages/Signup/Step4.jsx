@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
 import { Camera, Upload, Check } from 'lucide-react';
+import { useAlert } from '../../context/AlertContext';
 
 import api from '../../utils/api';
 
 const Step4 = ({ data, updateData }) => {
+    const { showAlert } = useAlert();
     const [uploading, setUploading] = useState({});
 
     const handleFileChange = async (id, file) => {
@@ -19,7 +21,11 @@ const Step4 = ({ data, updateData }) => {
             }
         } catch (error) {
             console.error("Upload failed:", error);
-            alert("Failed to upload photo. Please check your connection and try again.");
+            showAlert({
+                title: 'Upload Error',
+                message: "We couldn't upload your photo. Please check your connection and try again.",
+                type: 'error'
+            });
         } finally {
             setUploading(prev => ({ ...prev, [id]: false }));
         }

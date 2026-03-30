@@ -1,7 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import api from '../../../utils/api';
+import { useAlert } from '../../../context/AlertContext';
+
 
 const PlansSection = ({ gym, onCreatePlan, onEditPlan }) => {
+    const { showAlert } = useAlert();
     const [plans, setPlans] = useState([]);
     const [loading, setLoading] = useState(true);
 
@@ -33,7 +36,11 @@ const PlansSection = ({ gym, onCreatePlan, onEditPlan }) => {
             }
         } catch (err) {
             console.error('Error deleting plan:', err);
-            alert(err.message);
+            showAlert({
+                title: 'Deactivation Failed',
+                message: err.message || 'We could not deactivate this plan. Please try again.',
+                type: 'error'
+            });
         }
     };
 

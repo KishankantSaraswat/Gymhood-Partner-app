@@ -1,10 +1,11 @@
-import React, { useState } from 'react';
 import { Upload, Shield, FileText, Check } from 'lucide-react';
+import { useAlert } from '../../context/AlertContext';
 
 import api from '../../utils/api';
 
 
 const Step5 = ({ data, updateData }) => {
+    const { showAlert } = useAlert();
     const [uploading, setUploading] = useState({});
 
     const handleFileChange = async (id, file) => {
@@ -12,7 +13,11 @@ const Step5 = ({ data, updateData }) => {
 
         // Enforce PDF only
         if (file.type !== 'application/pdf') {
-            alert('Only PDF files are allowed for verification documents.');
+            showAlert({
+                title: 'Invalid Format',
+                message: 'Only PDF files are accepted for verification to ensure document integrity.',
+                type: 'warning'
+            });
             return;
         }
 
@@ -26,7 +31,11 @@ const Step5 = ({ data, updateData }) => {
             }
         } catch (error) {
             console.error(`Upload failed for ${id}:`, error);
-            alert('Failed to upload document. Please try again.');
+            showAlert({
+                title: 'Upload Failed',
+                message: 'We could not upload your document. Please check your connection and try again.',
+                type: 'error'
+            });
         } finally {
             setUploading(prev => ({ ...prev, [id]: false }));
         }
