@@ -36,7 +36,6 @@ const OverviewSection = ({ gym, onSectionChange }) => {
                     `/gymdb/dashboard/stats/${gym._id}`,
                     `/gymdb/plans/gym/${gym._id}`,
                     `/gymdb/gym/${gym._id}/active-capacity`,
-                    `/gymdb/gym/${gym._id}/active-capacity`,
                     `/gymdb/gym/${gym._id}/today-register`,
                     `/gymdb/gym/pending-requests`
                 ];
@@ -93,7 +92,7 @@ const OverviewSection = ({ gym, onSectionChange }) => {
 
                 if (shiftData.success) setActiveShift(shiftData);
                 if (logsData.success) setCheckinLogs(logsData.register || []);
-                if (requestsData.success) setPendingRequests(requestsData.requests || []);
+                if (requestsData.success) setPendingRequests(requestsData.data || []);
 
             } catch (err) {
                 console.error('Error fetching stats:', err);
