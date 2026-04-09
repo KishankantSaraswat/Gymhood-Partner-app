@@ -14,6 +14,7 @@ import PlanFormSection from './Dashboard/components/PlanFormSection';
 import GymLoader from '../components/GymLoader';
 import SettlementRequestModal from './Dashboard/components/SettlementRequestModal';
 import PlanFormModal from './Dashboard/components/PlanFormSection';
+import SubscriptionOverlay from './Dashboard/components/SubscriptionOverlay';
 import api from '../utils/api';
 
 const DashboardPage = () => {
@@ -29,6 +30,7 @@ const DashboardPage = () => {
     const [settlementModalData, setSettlementModalData] = useState(null);
     const [showPlanModal, setShowPlanModal] = useState(false);
     const [planModalData, setPlanModalData] = useState(null);
+    const [requiresPayment, setRequiresPayment] = useState(false);
     const profileMenuRef = useRef(null);
 
     // Close profile menu on click outside
@@ -60,6 +62,12 @@ const DashboardPage = () => {
                 }
             } catch (err) {
                 console.error('Error fetching dashboard data:', err);
+                if (err.response && err.response.requiresPayment) {
+                    setRequiresPayment(true);
+                    setGymData(err.response.gymId ? { _id: err.response.gymId, ...err.response } : err.response);
+                    return;
+                }
+                
                 setError(err.message);
                 if (err.message.includes('authenticated') || err.message.includes('token')) {
                     navigate('/login');
@@ -275,6 +283,16 @@ const DashboardPage = () => {
                     onSuccess={() => {
                         // Refresh plans data if needed
                         handleClosePlanModal();
+                    }}
+                />
+            )}
+            {/* Subscription Overlay */}
+            {requiresPayment && gymData && (
+                <SubscriptionOverlay 
+                    gym={gymData} 
+                    onPaymentSuccess={() => {
+                        setRequiresPayment(false);
+                        window.location.reload();
                     }}
                 />
             )}

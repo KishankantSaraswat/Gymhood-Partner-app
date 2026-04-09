@@ -207,11 +207,25 @@ const OverviewSection = ({ gym, onSectionChange }) => {
                                         </div>
                                         <div>
                                             <h3 className="text-xl sm:text-2xl lg:text-3xl font-black tracking-tight text-white mb-1 truncate max-w-[150px] sm:max-w-none">{gym?.name || "My Gym"}</h3>
-                                            <div className="flex items-center gap-2">
-                                                <span className={`w-2 h-2 rounded-full ${gym?.isVerified ? "bg-emerald-400 shadow-[0_0_10px_rgba(52,211,153,0.5)]" : "bg-amber-400"}`}></span>
-                                                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-                                                    {gym?.isVerified ? "Verified Partner" : "Verification Pending"}
-                                                </span>
+                                            <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+                                                <div className="flex items-center gap-2">
+                                                    <span className={`w-2 h-2 rounded-full ${gym?.isVerified ? "bg-emerald-400 shadow-[0_0_10px_rgba(52,211,153,0.5)]" : "bg-amber-400"}`}></span>
+                                                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                                                        {gym?.isVerified ? "Verified Partner" : "Verification Pending"}
+                                                    </span>
+                                                </div>
+                                                
+                                                {gym?.subscriptionExpiry && (
+                                                    <div className="flex items-center gap-2 px-3 py-1 bg-indigo-500/20 rounded-xl border border-indigo-500/30">
+                                                        <i className="fas fa-crown text-[10px] text-amber-400"></i>
+                                                        <span className="text-[10px] font-black text-indigo-100 uppercase tracking-wider">
+                                                            {gym.assignedPlan?.name || "Active Plan"} • {(() => {
+                                                                const days = Math.ceil((new Date(gym.subscriptionExpiry) - new Date()) / (1000 * 60 * 60 * 24));
+                                                                return days > 0 ? `${days} Days Left` : "Expired Today";
+                                                            })()}
+                                                        </span>
+                                                    </div>
+                                                )}
                                             </div>
                                         </div>
                                     </div>

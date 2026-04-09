@@ -23,7 +23,11 @@ const api = {
             throw new Error(`Server returned ${response.status} (${response.statusText}). Please check if API URL is correct.`);
         }
 
-        if (!response.ok) throw new Error(data.message || 'Something went wrong');
+        if (!response.ok) {
+            const error = new Error(data.message || 'Something went wrong');
+            error.response = data;
+            throw error;
+        }
         return data;
     },
     post: async (endpoint, body) => {
@@ -49,7 +53,11 @@ const api = {
             throw new Error(`Server returned ${response.status} (${response.statusText}). Please check if API URL is correct.`);
         }
 
-        if (!response.ok) throw new Error(data.message || 'Something went wrong');
+        if (!response.ok) {
+            const error = new Error(data.message || 'Something went wrong');
+            error.response = data;
+            throw error;
+        }
         return data;
     },
     put: async (endpoint, body) => {
@@ -75,7 +83,11 @@ const api = {
             throw new Error(`Server returned ${response.status} (${response.statusText}). Please check if API URL is correct.`);
         }
 
-        if (!response.ok) throw new Error(data.message || 'Something went wrong');
+        if (!response.ok) {
+            const error = new Error(data.message || 'Something went wrong');
+            error.response = data;
+            throw error;
+        }
         return data;
     },
     delete: async (endpoint, body) => {
@@ -101,7 +113,11 @@ const api = {
             throw new Error(`Server returned ${response.status} (${response.statusText}). Please check if API URL is correct.`);
         }
 
-        if (!response.ok) throw new Error(data.message || 'Something went wrong');
+        if (!response.ok) {
+            const error = new Error(data.message || 'Something went wrong');
+            error.response = data;
+            throw error;
+        }
         return data;
     },
     upload: async (file) => {

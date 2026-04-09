@@ -1,3 +1,4 @@
+import React, { useState } from 'react';
 import { Upload, Shield, FileText, Check } from 'lucide-react';
 import { useAlert } from '../../context/AlertContext';
 

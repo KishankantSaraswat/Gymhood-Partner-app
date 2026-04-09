@@ -32,12 +32,19 @@ const AdminDashboard = () => {
     const [revenuePeriod, setRevenuePeriod] = useState('totalRevenue');
     const [commissionPeriod, setCommissionPeriod] = useState('totalCommission');
     const [selectedGym, setSelectedGym] = useState(null);
+    const [selectedPlan, setSelectedPlan] = useState(null);
+    const [isPlanModalOpen, setIsPlanModalOpen] = useState(false);
+    const [planFormData, setPlanFormData] = useState({ name: '', description: '', price: '', duration: '', features: '' });
     const [isModalLoading, setIsModalLoading] = useState(false);
     const [updatingCommission, setUpdatingCommission] = useState(false);
     const [tempCommission, setTempCommission] = useState(0);
     const [deleteModal, setDeleteModal] = useState({ isOpen: false, gymId: null, gymName: '' });
     const [deletePassword, setDeletePassword] = useState('');
     const [isDeleting, setIsDeleting] = useState(false);
+    const [adminPlans, setAdminPlans] = useState([]);
+    const [verifyModal, setVerifyModal] = useState({ isOpen: false, gymId: null, gymName: '' });
+    const [selectedPlanId, setSelectedPlanId] = useState('');
+    const [isVerifying, setIsVerifying] = useState(false);
 
     useEffect(() => {
         fetchData();
@@ -46,17 +53,19 @@ const AdminDashboard = () => {
 
     const fetchData = async () => {
         try {
-            const [statsRes, gymsRes, annRes, settleRes] = await Promise.all([
+            const [statsRes, gymsRes, annRes, settleRes, plansRes] = await Promise.all([
                 api.get('/admin/stats'),
                 api.get('/admin/gyms/admin-all'),
                 api.get('/admin/announcements/user'),
-                api.get('/payment/settlement-requests')
+                api.get('/payment/settlement-requests'),
+                api.get('/admin-plans/all')
             ]);
 
             if (statsRes.success) setStats(statsRes.stats);
             if (gymsRes.success) setGymsList(gymsRes.gyms);
             if (annRes.success) setAnnouncements(annRes.announcements);
             if (settleRes.success) setSettlementRequests(settleRes.data);
+            if (plansRes.success) setAdminPlans(plansRes.plans);
         } catch (err) {
             console.error('Error fetching data:', err);
         } finally {
@@ -64,15 +73,38 @@ const AdminDashboard = () => {
         }
     };
 
-    const handleVerifyToggle = async (gymId) => {
+    const getSubscriptionInfo = (gym) => {
+        if (!gym.isVerified) return { badge: 'Verified First', color: 'bg-slate-100 text-slate-500', subBadge: null };
+        if (!gym.assignedPlan) return { badge: 'No Plan', color: 'bg-amber-100 text-amber-700', subBadge: 'Plan Required' };
+        
+        const status = gym.subscriptionStatus;
+        const expiry = gym.subscriptionExpiry;
+        const planName = gym.assignedPlan?.name || 'Assigned Plan';
+        
+        if (status === 'pending') return { badge: planName, subBadge: 'Payment Pending', color: 'bg-orange-100 text-orange-700' };
+        
+        if (expiry) {
+            const days = Math.ceil((new Date(expiry) - new Date()) / (1000 * 60 * 60 * 24));
+            if (days < 0) return { badge: planName, subBadge: 'Expired', color: 'bg-rose-100 text-rose-700' };
+            return { badge: planName, subBadge: `${days} Days Left`, color: 'bg-emerald-100 text-emerald-700' };
+        }
+        
+        return { badge: planName, subBadge: 'Not Activated', color: 'bg-slate-100 text-slate-600' };
+    };
+
+    const handleVerifyToggle = async (gymId, planId) => {
+        setIsVerifying(true);
         try {
-            const data = await api.put(`/admin/gym/${gymId}/toggle-verify`);
+            const data = await api.put(`/admin/gym/${gymId}/toggle-verify`, { adminPlanId: planId });
             if (data.success) {
                 setGymsList(prev => prev.map(g => g._id === gymId ? { ...g, isVerified: data.isVerified } : g));
                 // Also refresh stats to update pending count
                 const statsRes = await api.get('/admin/stats');
                 if (statsRes.success) setStats(statsRes.stats);
-                
+ 
+                setVerifyModal({ isOpen: false, gymId: null, gymName: '' });
+                setSelectedPlanId('');
+ 
                 showAlert({
                     title: data.isVerified ? 'Gym Verified' : 'Verification Revoked',
                     message: `Strategic partnership status for this gym has been ${data.isVerified ? 'activated' : 'deactivated'}.`,
@@ -82,9 +114,11 @@ const AdminDashboard = () => {
         } catch (err) {
             showAlert({
                 title: 'Operation Failed',
-                message: 'We encountered an error while updating the verification status. Please try again.',
+                message: err.message || 'We encountered an error while updating the verification status. Please try again.',
                 type: 'error'
             });
+        } finally {
+            setIsVerifying(false);
         }
     };
 
@@ -362,6 +396,7 @@ const AdminDashboard = () => {
                     {[
                         { icon: LayoutDashboard, label: 'Dashboard', section: 'overview' },
                         { icon: Dumbbell, label: 'Gym Partners', section: 'gyms' },
+                        { icon: FileText, label: 'Admin Plans', section: 'admin-plans' },
                         // { icon: Coins, label: 'Settlements', section: 'settlements' },
                         // { icon: Settings, label: 'Commission', section: 'commission' },
                         { icon: Megaphone, label: 'Announcements', section: 'announcements' }
@@ -413,7 +448,12 @@ const AdminDashboard = () => {
                 <header className="h-20 bg-white border-b border-slate-200 flex items-center justify-between px-4 sm:px-8 shadow-sm">
                     <div className="pl-14 md:pl-0">
                         <h1 className="text-xl sm:text-3xl font-black bg-gradient-to-r from-violet-600 to-indigo-600 bg-clip-text text-transparent">
-                            {activeSection === 'overview' ? 'Dashboard Overview' : activeSection === 'gyms' ? 'Gym Partners' : activeSection === 'commission' ? 'Commission Settings' : activeSection === 'settlements' ? 'Settlements' : 'Announcements'}
+                            {activeSection === 'overview' ? 'Dashboard Overview' : 
+                             activeSection === 'gyms' ? 'Gym Partners' : 
+                             activeSection === 'admin-plans' ? 'Subscription Plans' :
+                             activeSection === 'commission' ? 'Commission Settings' : 
+                             activeSection === 'settlements' ? 'Settlements' : 
+                             'Announcements'}
                         </h1>
                         <p className="hidden sm:block text-sm text-slate-500 font-medium mt-1">Welcome back, Super Admin</p>
                     </div>
@@ -540,6 +580,7 @@ const AdminDashboard = () => {
                                             <th className="p-5 text-left font-bold">Location</th>
                                             <th className="p-5 text-left font-bold">Rating</th>
                                             <th className="p-5 text-left font-bold">Revenue</th>
+                                            <th className="p-5 text-left font-bold">Subscription</th>
                                             <th className="p-5 text-left font-bold">Status</th>
                                             <th className="p-5 text-right font-bold">Actions</th>
                                         </tr>
@@ -569,6 +610,21 @@ const AdminDashboard = () => {
                                                     </span>
                                                 </td>
                                                 <td className="p-5">
+                                                    {(() => {
+                                                        const info = getSubscriptionInfo(gym);
+                                                        return (
+                                                            <div className="flex flex-col gap-1">
+                                                                <span className="text-sm font-black text-slate-900 leading-tight">{info.badge}</span>
+                                                                {info.subBadge && (
+                                                                    <span className={`text-[10px] font-black px-2 py-0.5 rounded-md uppercase tracking-wider inline-block w-fit ${info.color}`}>
+                                                                        {info.subBadge}
+                                                                    </span>
+                                                                )}
+                                                            </div>
+                                                        );
+                                                    })()}
+                                                </td>
+                                                <td className="p-5">
                                                     <span className={`px-4 py-1.5 rounded-full text-xs font-bold ${gym.isVerified ? 'bg-emerald-100 text-emerald-700' : 'bg-orange-100 text-orange-700'}`}>{gym.isVerified ? 'Verified' : 'Pending'}</span>
                                                 </td>
                                                 <td className="p-5 text-right">
@@ -576,7 +632,11 @@ const AdminDashboard = () => {
                                                         <button
                                                             onClick={(e) => {
                                                                 e.stopPropagation();
-                                                                handleVerifyToggle(gym._id);
+                                                                if (gym.isVerified) {
+                                                                    handleVerifyToggle(gym._id);
+                                                                } else {
+                                                                    setVerifyModal({ isOpen: true, gymId: gym._id, gymName: gym.name });
+                                                                }
                                                             }}
                                                             className={`px-5 py-2 rounded-xl text-sm font-bold shadow-md transition-all ${gym.isVerified ? 'bg-slate-100 text-slate-600 hover:bg-slate-200' : 'bg-gradient-to-r from-emerald-500 to-teal-600 text-white hover:shadow-lg'
                                                                 }`}
@@ -768,7 +828,84 @@ const AdminDashboard = () => {
                             </div>
                         </div>
                     )}
-                    {/* Settlements */}
+                    {/* Admin Plans Management */}
+                    {activeSection === 'admin-plans' && (
+                        <div className="space-y-6">
+                            <div className="flex justify-between items-center">
+                                <h2 className="text-2xl font-black text-slate-900">Partner Subscription Plans</h2>
+                                <button 
+                                    onClick={() => {
+                                        setSelectedPlan(null);
+                                        setPlanFormData({ name: '', description: '', price: '', duration: '', features: '' });
+                                        setIsPlanModalOpen(true);
+                                    }}
+                                    className="bg-gradient-to-r from-violet-600 to-indigo-600 text-white px-6 py-3 rounded-2xl text-sm font-black flex items-center gap-2 shadow-lg hover:shadow-violet-200 transition-all"
+                                >
+                                    <Zap className="w-4 h-4" /> Create New Plan
+                                </button>
+                            </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                {adminPlans.map((plan) => (
+                                    <div key={plan._id} className="bg-white p-8 rounded-[2.5rem] border border-slate-200 shadow-xl relative overflow-hidden group hover:border-violet-500 transition-all">
+                                        <div className="flex justify-between items-start mb-6">
+                                            <div className="w-14 h-14 rounded-2xl bg-violet-50 text-violet-600 flex items-center justify-center text-xl font-black shadow-inner">
+                                                <i className="fas fa-gem"></i>
+                                            </div>
+                                            <div className="text-right">
+                                                <p className="text-3xl font-black text-slate-900">₹{plan.price}</p>
+                                                <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">{plan.duration} Days</p>
+                                            </div>
+                                        </div>
+                                        <h3 className="text-xl font-black text-slate-900 mb-2">{plan.name}</h3>
+                                        <p className="text-slate-500 text-sm font-medium mb-6 line-clamp-2">{plan.description}</p>
+                                        
+                                        <div className="flex gap-2">
+                                            <button 
+                                                onClick={() => {
+                                                    setSelectedPlan(plan);
+                                                    setPlanFormData({
+                                                        name: plan.name,
+                                                        description: plan.description,
+                                                        price: plan.price,
+                                                        duration: plan.duration,
+                                                        features: (plan.features || []).join('\n')
+                                                    });
+                                                    setIsPlanModalOpen(true);
+                                                }}
+                                                className="flex-1 py-3 bg-slate-50 text-slate-600 rounded-xl text-xs font-bold hover:bg-violet-50 hover:text-violet-600 transition-all border border-slate-100"
+                                            >
+                                                Edit Plan
+                                            </button>
+                                            <button 
+                                                onClick={async () => {
+                                                    if(window.confirm('Delete this plan?')) {
+                                                        try {
+                                                            await api.delete(`/admin-plans/delete/${plan._id}`);
+                                                            setAdminPlans(prev => prev.filter(p => p._id !== plan._id));
+                                                            showAlert({ title: 'Plan Deleted', message: 'The subscription plan has been removed.', type: 'success' });
+                                                        } catch(err) {
+                                                            showAlert({ title: 'Error', message: err.message, type: 'error' });
+                                                        }
+                                                    }
+                                                }}
+                                                className="p-3 bg-rose-50 text-rose-600 rounded-xl hover:bg-rose-100 transition-all border border-rose-100"
+                                            >
+                                                <Trash2 className="w-4 h-4" />
+                                            </button>
+                                        </div>
+                                    </div>
+                                ))}
+                                {adminPlans.length === 0 && (
+                                    <div className="col-span-full py-20 bg-white rounded-[3rem] border border-dashed border-slate-200 text-center">
+                                        <Zap className="w-16 h-16 text-slate-200 mx-auto mb-4" />
+                                        <p className="text-slate-400 font-bold italic">No subscription plans created yet</p>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    )}
+
                     {activeSection === 'settlements' && (
                         <div className="space-y-6">
                             <h2 className="text-2xl font-black text-slate-900">Settlement Requests</h2>
@@ -1010,6 +1147,40 @@ const AdminDashboard = () => {
                                         </div>
                                     </div>
 
+                                    {/* Subscription Info */}
+                                    <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100 bg-gradient-to-br from-indigo-50/50 to-white">
+                                        <h3 className="text-lg font-black text-slate-900 mb-4 flex items-center gap-2">
+                                            <Zap className="w-5 h-5 text-indigo-600" /> Subscription Status
+                                        </h3>
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                                            <div>
+                                                <p className="text-xs text-slate-500 font-bold uppercase mb-1">Active Plan</p>
+                                                <p className="font-extrabold text-indigo-600 text-lg uppercase tracking-tight">
+                                                    {selectedGym.gym.assignedPlan?.name || 'No Plan Assigned'}
+                                                </p>
+                                                <p className="text-sm font-bold text-slate-400">₹{selectedGym.gym.assignedPlan?.price || 0} / {selectedGym.gym.assignedPlan?.duration || '0'} Days</p>
+                                            </div>
+                                            <div>
+                                                <p className="text-xs text-slate-500 font-bold uppercase mb-1">Status & Expiry</p>
+                                                {(() => {
+                                                    const info = getSubscriptionInfo(selectedGym.gym);
+                                                    return (
+                                                        <div className="flex flex-col gap-1">
+                                                            <span className={`px-3 py-1 rounded-full text-xs font-black uppercase tracking-widest w-fit ${info.color}`}>
+                                                                {info.subBadge || info.badge}
+                                                            </span>
+                                                            {selectedGym.gym.subscriptionExpiry && (
+                                                                <p className="text-sm font-bold text-slate-500 mt-1">
+                                                                    Valid until: {new Date(selectedGym.gym.subscriptionExpiry).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+                                                                </p>
+                                                            )}
+                                                        </div>
+                                                    );
+                                                })()}
+                                            </div>
+                                        </div>
+                                    </div>
+
                                     {/* Documents */}
                                     <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100">
                                         <h3 className="text-lg font-black text-slate-900 mb-4 flex items-center gap-2">
@@ -1242,6 +1413,171 @@ const AdminDashboard = () => {
                                     </button>
                                 </div>
                             </form>
+                        </div>
+                    </div>
+                </div>
+            )}
+ 
+            {/* Verify Modal */}
+            {verifyModal.isOpen && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6">
+                    <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={() => setVerifyModal({ ...verifyModal, isOpen: false })}></div>
+                    <div className="bg-white w-full max-w-md rounded-3xl shadow-2xl overflow-hidden relative p-8 animate-in fade-in zoom-in duration-300">
+                        <div className="flex flex-col items-center text-center">
+                            <div className="w-20 h-20 rounded-full bg-emerald-100 flex items-center justify-center mb-6 text-emerald-600">
+                                <Shield className="w-10 h-10" />
+                            </div>
+                            <h2 className="text-2xl font-black text-slate-900 mb-2">Verify Gym Partner</h2>
+                            <p className="text-slate-500 font-medium mb-6">
+                                To verify <span className="font-bold text-slate-900">"{verifyModal.gymName}"</span>, please select a subscription plan that will be assigned to them.
+                            </p>
+ 
+                            <div className="w-full text-left space-y-4">
+                                <div>
+                                    <label className="block text-xs font-black text-slate-500 uppercase tracking-wider mb-2 ml-1">Select Subscription Plan</label>
+                                    <select
+                                        value={selectedPlanId}
+                                        onChange={(e) => setSelectedPlanId(e.target.value)}
+                                        className="w-full px-4 py-4 bg-slate-50 border border-slate-200 rounded-2xl focus:border-violet-500 outline-none font-bold text-slate-700 transition-all"
+                                    >
+                                        <option value="">Select a plan...</option>
+                                        {adminPlans.map(plan => (
+                                            <option key={plan._id} value={plan._id}>
+                                                {plan.name} - ₹{plan.price} ({plan.duration} days)
+                                            </option>
+                                        ))}
+                                    </select>
+                                    {adminPlans.length === 0 && (
+                                        <p className="text-xs text-rose-500 mt-2 font-bold px-1">
+                                            No plans created. Please create a plan first.
+                                        </p>
+                                    )}
+                                </div>
+ 
+                                <div className="flex gap-3 pt-4">
+                                    <button
+                                        onClick={() => setVerifyModal({ ...verifyModal, isOpen: false })}
+                                        className="flex-1 py-4 px-6 rounded-2xl font-bold text-slate-600 hover:bg-slate-50 transition-all border border-slate-200"
+                                    >
+                                        Cancel
+                                    </button>
+                                    <button
+                                        disabled={!selectedPlanId || isVerifying}
+                                        onClick={() => handleVerifyToggle(verifyModal.gymId, selectedPlanId)}
+                                        className="flex-1 py-4 px-6 rounded-2xl font-black text-white bg-gradient-to-r from-emerald-600 to-teal-600 hover:shadow-xl hover:shadow-emerald-200 transition-all disabled:opacity-50 disabled:pointer-events-none flex items-center justify-center gap-2"
+                                    >
+                                        {isVerifying ? (
+                                            <>
+                                                <Loader className="w-5 h-5 animate-spin" />
+                                                <span>Verifying...</span>
+                                            </>
+                                        ) : (
+                                            <span>Verify Partner</span>
+                                        )}
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Plan Modal */}
+            {isPlanModalOpen && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6">
+                    <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={() => setIsPlanModalOpen(false)}></div>
+                    <div className="bg-white w-full max-w-xl rounded-[2.5rem] shadow-2xl overflow-hidden relative flex flex-col animate-in fade-in zoom-in duration-300">
+                        <div className="p-8 border-b border-slate-100 flex justify-between items-center">
+                            <h2 className="text-2xl font-black text-slate-900 flex items-center gap-3">
+                                <Zap className="w-6 h-6 text-violet-600" />
+                                {selectedPlan ? 'Edit Subscription Plan' : 'Create New Plan'}
+                            </h2>
+                            <button onClick={() => setIsPlanModalOpen(false)} className="w-10 h-10 rounded-full hover:bg-slate-50 flex items-center justify-center text-slate-400 transition-all">
+                                <X className="w-6 h-6" />
+                            </button>
+                        </div>
+
+                        <div className="p-8 space-y-6 overflow-y-auto max-h-[70vh]">
+                            <div className="grid grid-cols-2 gap-6">
+                                <div className="col-span-2">
+                                    <label className="block text-xs font-black text-slate-500 uppercase tracking-widest mb-2 ml-1">Plan Name</label>
+                                    <input 
+                                        type="text" 
+                                        value={planFormData.name}
+                                        onChange={(e) => setPlanFormData({...planFormData, name: e.target.value})}
+                                        className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl focus:border-violet-500 outline-none font-bold text-slate-700"
+                                        placeholder="e.g. Pro Partner Plan"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-black text-slate-500 uppercase tracking-widest mb-2 ml-1">Price (₹)</label>
+                                    <input 
+                                        type="number" 
+                                        value={planFormData.price}
+                                        onChange={(e) => setPlanFormData({...planFormData, price: e.target.value})}
+                                        className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl focus:border-violet-500 outline-none font-bold text-slate-700"
+                                        placeholder="999"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-black text-slate-500 uppercase tracking-widest mb-2 ml-1">Duration (Days)</label>
+                                    <input 
+                                        type="number" 
+                                        value={planFormData.duration}
+                                        onChange={(e) => setPlanFormData({...planFormData, duration: e.target.value})}
+                                        className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl focus:border-violet-500 outline-none font-bold text-slate-700"
+                                        placeholder="30"
+                                    />
+                                </div>
+                                <div className="col-span-2">
+                                    <label className="block text-xs font-black text-slate-500 uppercase tracking-widest mb-2 ml-1">Description</label>
+                                    <textarea 
+                                        rows={3}
+                                        value={planFormData.description}
+                                        onChange={(e) => setPlanFormData({...planFormData, description: e.target.value})}
+                                        className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl focus:border-violet-500 outline-none font-bold text-slate-700 resize-none"
+                                        placeholder="Quick summary of the plan..."
+                                    />
+                                </div>
+                                <div className="col-span-2">
+                                    <label className="block text-xs font-black text-slate-500 uppercase tracking-widest mb-2 ml-1">Features (one per line)</label>
+                                    <textarea 
+                                        rows={4}
+                                        value={planFormData.features}
+                                        onChange={(e) => setPlanFormData({...planFormData, features: e.target.value})}
+                                        className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl focus:border-violet-500 outline-none font-bold text-slate-700 resize-none"
+                                        placeholder="Feature 1&#10;Feature 2&#10;Feature 3"
+                                    />
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="p-8 bg-slate-50 border-t border-slate-100">
+                            <button 
+                                onClick={async () => {
+                                    try {
+                                        const payload = {
+                                            ...planFormData,
+                                            features: (planFormData.features || '').split('\n').filter(f => f.trim() !== '')
+                                        };
+                                        let res;
+                                        if (selectedPlan) {
+                                            res = await api.put(`/admin-plans/update/${selectedPlan._id}`, payload);
+                                            setAdminPlans(prev => prev.map(p => p._id === selectedPlan._id ? res.plan : p));
+                                        } else {
+                                            res = await api.post('/admin-plans/create', payload);
+                                            setAdminPlans(prev => [...prev, res.plan]);
+                                        }
+                                        setIsPlanModalOpen(false);
+                                        showAlert({ title: 'Success', message: `Plan ${selectedPlan ? 'updated' : 'created'} successfully!`, type: 'success' });
+                                    } catch(err) {
+                                        showAlert({ title: 'Error', message: err.message, type: 'error' });
+                                    }
+                                }}
+                                className="w-full bg-gradient-to-r from-violet-600 to-indigo-600 text-white py-4 rounded-2xl font-black text-sm uppercase tracking-widest shadow-xl hover:shadow-violet-200 transition-all"
+                            >
+                                {selectedPlan ? 'Save Changes' : 'Create Plan'}
+                            </button>
                         </div>
                     </div>
                 </div>
